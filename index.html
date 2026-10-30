@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#F7F4EC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>凡尘问道</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="凡尘问道">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" type="image/png" href="icon-192.png">
+
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --paper:#F7F4EC;--paper2:#EFEAE0;--paper3:#FBF9F3;
+  --ink:#2C2C2A;--ink2:#5F5E5A;--ink3:#8A8578;
+  --line:#DCD5C6;--line2:#C9C1AF;
+  --green:#0F6E56;--green-l:#E1F5EE;
+  --amber:#BA7517;--amber-l:#FAEEDA;
+  --red:#993C1D;--red-l:#FAECE7;
+  --blue:#185FA5;
+}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.6;
+  -webkit-text-size-adjust:100%;
+}
+.serif{font-family:"Songti SC","STSong","SimSun",Georgia,serif}
+#app{
+  position:relative;display:flex;flex-direction:column;
+  height:100dvh;max-width:520px;margin:0 auto;background:var(--paper);
+  overflow:hidden;
+}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+/* ---------- header ---------- */
+#hdr{flex:none;background:var(--paper2);border-bottom:1px solid var(--line);padding:calc(8px + env(safe-area-inset-top)) 16px 10px}
+.hrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hname{font-size:15px;font-weight:600;letter-spacing:.5px;color:var(--ink)}
+.hrealm{font-size:12.5px;color:var(--green);font-weight:500}
+.hbar{height:5px;border-radius:3px;background:#DCD5C6;margin-top:9px;overflow:hidden;position:relative}
+.hbar>i{display:block;height:100%;width:0;background:var(--green);border-radius:3px;transition:width .35s ease}
+.hbar.ready>i{background:linear-gradient(90deg,var(--amber),#D9A03C)}
+.hmeta{display:flex;justify-content:space-between;margin-top:7px;font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.hmeta b{font-weight:500;color:var(--ink)}
+.hmeta .warn{color:var(--red)}
+
+/* ---------- view ---------- */
+#view{flex:1;min-height:0;display:flex;flex-direction:column}
+#view>div{flex:1;min-height:0}
+#log{padding:14px 16px 6px}
+.le{margin:0 0 10px;font-size:13.5px;line-height:1.85;color:var(--ink);
+    animation:fin .28s ease both}
+.le dim,.le.dim{color:var(--ink2)}
+.le.good{color:var(--green)}
+.le.bad{color:var(--red)}
+.le.warn{color:var(--amber)}
+.le.sys{color:var(--ink3);font-size:12.5px}
+.le.break{color:var(--amber);font-weight:500}
+@keyframes fin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+[data-tab]{display:none}
+[data-tab].on{display:block}
+
+/* ---------- actions ---------- */
+#acts{flex:none;display:flex;gap:8px;padding:8px 14px 10px;border-top:1px solid var(--line);background:var(--paper)}
+.btn{
+  border:1px solid var(--line2);background:var(--paper3);color:var(--ink);
+  border-radius:10px;padding:10px 4px;font-size:13px;text-align:center;
+  cursor:pointer;user-select:none;transition:background .12s,transform .08s;
+  font-family:inherit;flex:1;min-width:0;white-space:nowrap;
+}
+.btn:active{transform:scale(.975);background:#F2EEE2}
+.btn.primary{background:var(--green);border-color:var(--green);color:#F7F4EC}
+.btn.primary:active{background:#0B5A46}
+.btn.gold{background:var(--amber);border-color:var(--amber);color:#FFFDF5}
+.btn.gold:active{background:#9C6110}
+.btn:disabled,.btn.off{opacity:.38;pointer-events:none}
+.btn.sm{flex:none;padding:6px 12px;font-size:12.5px;border-radius:8px}
+
+/* ---------- nav ---------- */
+#nav{flex:none;display:flex;border-top:1px solid var(--line);background:var(--paper2);
+     padding-bottom:env(safe-area-inset-bottom)}
+#nav div{flex:1;text-align:center;padding:9px 0 10px;font-size:11.5px;color:var(--ink3);cursor:pointer;user-select:none}
+#nav div.on{color:var(--green);font-weight:600}
+
+/* ---------- panels ---------- */
+.pad{padding:14px 16px 20px}
+.card{background:var(--paper3);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.card h3{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--ink);letter-spacing:.5px}
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed #E6E0D2;color:var(--ink2)}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.kv .g{color:var(--green)}
+.kv .r{color:var(--red)}
+.kv .a{color:var(--amber)}
+.hint{font-size:12px;color:var(--ink3);line-height:1.7;margin:6px 0 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px dashed #E6E0D2}
+.row:last-child{border-bottom:0}
+.row .nm{font-size:13px;color:var(--ink)}
+.row .ds{font-size:11.5px;color:var(--ink3);margin-top:2px}
+.row .rt{display:flex;align-items:center;gap:8px;flex:none}
+.price{font-size:12px;color:var(--amber);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--paper2);color:var(--ink3);border:1px solid var(--line)}
+.tag.eq{background:var(--green-l);color:var(--green);border-color:#B7DED0}
+.tag.on{background:var(--amber-l);color:var(--amber);border-color:#EBCF9E}
+.empty{text-align:center;color:var(--ink3);font-size:12.5px;padding:26px 0}
+
+/* ---------- modal ---------- */
+#mask{position:absolute;inset:0;background:rgba(44,44,42,.34);display:none;z-index:60}
+#mask.on{display:block}
+#modal{
+  position:absolute;left:0;right:0;bottom:0;z-index:61;
+  background:var(--paper);border-radius:18px 18px 0 0;
+  transform:translateY(102%);transition:transform .26s cubic-bezier(.32,.72,0,1);
+  max-height:86%;display:flex;flex-direction:column;
+  padding-bottom:calc(10px + env(safe-area-inset-bottom));
+  box-shadow:0 -2px 24px rgba(44,44,42,.14);
+}
+#modal.on{transform:translateY(0)}
+#modal .mh{flex:none;padding:16px 18px 0}
+#modal .mh h2{margin:0;font-size:15.5px;font-weight:600;letter-spacing:.5px}
+#modal .mb{padding:12px 18px 4px;overflow-y:auto;font-size:13.5px;line-height:1.85;color:var(--ink)}
+#modal .mc{padding:8px 18px 6px;display:flex;flex-direction:column;gap:8px}
+
+/* ---------- start ---------- */
+#start{position:absolute;inset:0;z-index:80;background:var(--paper);display:flex;flex-direction:column;
+       padding:calc(30px + env(safe-area-inset-top)) 24px 24px;overflow-y:auto}
+#start.off{display:none}
+.title{font-size:30px;letter-spacing:8px;color:var(--ink);text-align:center;margin:26px 0 6px;font-weight:400}
+.subtitle{text-align:center;font-size:12px;color:var(--ink3);letter-spacing:3px;margin-bottom:34px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;color:var(--ink3);margin-bottom:6px;letter-spacing:1px}
+.field input{
+  width:100%;padding:12px 14px;font-size:15px;font-family:inherit;
+  background:var(--paper3);border:1px solid var(--line2);border-radius:10px;color:var(--ink);outline:none;
+}
+.field input:focus{border-color:var(--green)}
+.rootbox{background:var(--paper3);border:1px solid var(--line2);border-radius:12px;padding:14px}
+.rootbox .rn{font-size:15px;font-weight:600;color:var(--green);margin-bottom:4px}
+.rootbox .rd{font-size:12px;color:var(--ink3);line-height:1.7}
+.rootbox .rb{font-size:12px;color:var(--amber);margin-top:6px}
+.startbtn{width:100%;padding:14px;border-radius:12px;background:var(--green);color:#F7F4EC;
+          border:0;font-size:15px;font-family:inherit;letter-spacing:2px;cursor:pointer;margin-top:8px}
+.startbtn:active{background:#0B5A46}
+.startbtn.ghost{background:transparent;color:var(--ink2);border:1px solid var(--line2);margin-top:10px;font-size:13px;letter-spacing:1px}
+.foot{text-align:center;font-size:11px;color:var(--ink3);margin-top:auto;padding-top:24px;line-height:1.9}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="hdr">
+    <div class="hrow">
+      <span class="hname" id="h-name">—</span>
+      <span class="hrealm" id="h-realm">—</span>
+    </div>
+    <div class="hbar" id="h-barw"><i id="h-bar"></i></div>
+    <div class="hmeta">
+      <span id="h-exp">修为 0 / 0</span>
+      <span id="h-life">寿元 0 / 0</span>
+      <span id="h-money">灵石 0</span>
+    </div>
+  </header>
+
+  <div id="view">
+    <div class="scroll on" id="log" data-tab="cult"></div>
+    <div class="scroll pad" id="tab-char" data-tab="char"></div>
+    <div class="scroll pad" id="tab-bag" data-tab="bag"></div>
+    <div class="scroll pad" id="tab-shop" data-tab="shop"></div>
+    <div class="scroll pad" id="tab-book" data-tab="book"></div>
+  </div>
+
+  <div id="acts">
+    <button class="btn primary" id="a-train">打坐</button>
+    <button class="btn" id="a-explore">游历</button>
+    <button class="btn" id="a-break">突破</button>
+  </div>
+
+  <nav id="nav">
+    <div class="on" data-go="cult">修炼</div>
+    <div data-go="char">人物</div>
+    <div data-go="bag">行囊</div>
+    <div data-go="shop">坊市</div>
+    <div data-go="book">见闻</div>
+  </nav>
+
+  <div id="mask"></div>
+  <div id="modal">
+    <div class="mh"><h2 id="m-title"></h2></div>
+    <div class="mb" id="m-body"></div>
+    <div class="mc" id="m-choices"></div>
+  </div>
+
+  <div id="start">
+    <div class="title serif" id="s-title">凡尘问道</div>
+    <div class="subtitle">一介凡人的长生路</div>
+    <div class="field">
+      <label>道号</label>
+      <input id="s-name" maxlength="8" placeholder="取个名字" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>先天灵根</label>
+      <div class="rootbox" id="s-root"></div>
+    </div>
+    <button class="startbtn" id="s-go">踏入修行</button>
+    <button class="startbtn ghost" id="s-reroll">换个灵根（剩 3 次）</button>
+    <div class="foot">
+      修为随时间自然累积 · 每 1.5 秒一日<br>
+      存档保存在本机浏览器 · 换设备即新档
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   凡尘问道 —— 单文件文字修仙
+   ============================================================ */
+
+const SAVE_KEY = "fanchen_xiuxian_v1";
+const TICK_MS = 1500;                 // 1.5 秒 = 游戏内 1 天
+const DAYS_PER_YEAR = 360;
+const OFFLINE_CAP_DAYS = 600;         // 离线最多折算 600 天
+const OFFLINE_RATE = 0.5;
+
+/* -------------------- 境界 -------------------- */
+const REALMS = [
+  {n:"练气", layers:13, base:110,      grow:1.32, life:50,   mul:1,     need:null},
+  {n:"筑基", layers:4,  base:4000,     grow:1.55, life:160,  mul:5,     need:"zhujidan"},
+  {n:"结丹", layers:4,  base:18000,    grow:1.55, life:320,  mul:20,    need:"jiedandan"},
+  {n:"元婴", layers:4,  base:80000,    grow:1.55, life:600,  mul:70,    need:"yuanyingdan"},
+  {n:"化神", layers:4,  base:360000,   grow:1.55, life:1000, mul:250,   need:"huashendan"},
+  {n:"炼虚", layers:4,  base:1600000,  grow:1.55, life:1600, mul:800,   need:null},
+  {n:"合体", layers:4,  base:7000000,  grow:1.55, life:2400, mul:2500,  need:null},
+  {n:"大乘", layers:4,  base:3e7,      grow:1.55, life:3600, mul:8000,  need:null},
+  {n:"渡劫", layers:1,  base:1.3e8,    grow:1,    life:5000, mul:25000, need:null}
+];
+const SMALL_NAMES = ["初期","中期","后期","圆满"];
+const NUM_CN = ["一","二","三","四","五","六","七","八","九","十","十一","十二","十三"];
+
+function realmTitle(realm, layer){
+  const r = REALMS[realm];
+  if (!r) return "凡人";
+  if (r.layers === 13) return r.n + NUM_CN[layer-1] + "层";
+  return r.n + SMALL_NAMES[layer-1];
+}
+
+/* -------------------- 灵根 -------------------- */
+const ROOTS = [
+  {n:"伪灵根",   mul:0.75, w:26, d:"五行驳杂，灵气入体如泥牛入海。修行极慢，但胜在无人觊觎。"},
+  {n:"三灵根",   mul:0.9,  w:26, d:"存三属性灵根，资质平平。凡人大抵如此，能走多远全看心性。"},
+  {n:"双灵根",   mul:1.05, w:22, d:"两属相济，修行顺畅。放在小门派里已算良才。"},
+  {n:"单灵根",   mul:1.35, w:16, d:"一属纯粹，灵气近乎无碍地汇入丹田。宗门争抢的对象。"},
+  {n:"变异灵根", mul:1.75, w:7,  d:"雷、冰、风之类的异象之根。修行极快，但天妒英才，突破凶险。"},
+  {n:"天灵根",   mul:2.3,  w:3,  d:"万年一遇。天地灵气自来投体，你只需静坐，便是他人一生所求。"}
+];
+
+/* -------------------- 物品 -------------------- */
+const ITEMS = {
+  huiqi:    {n:"回气丹", t:"pill", price:10,  d:"回复四成气血", use:s=>{const st=stats(); const v=Math.round(st.hpMax*0.4); const real=Math.min(v, st.hpMax-s.hp); s.hp+=real; return "服下回气丹，气血回复 "+real+"。";}},
+  juqi:     {n:"聚气丹", t:"pill", price:24,  d:"立得约五十日修为", use:s=>{const g=Math.round(gainPerDay()*50); s.exp=Math.min(expNeed(), s.exp+g); return "药力化开，修为 +"+g+"。";}},
+  pozhang:  {n:"破障丹", t:"pill", price:90,  d:"下次突破成功率 +25%", use:s=>{s.buff.pozhang=true; return "破障丹已置于案前，下次突破成功率大增。";}},
+  huiling:  {n:"回灵散", t:"pill", price:45,  d:"受伤后立刻恢复，免除卧床", use:s=>{s.hurt=0; return "药粉入喉，伤痛尽去。";}},
+  zhujidan: {n:"筑基丹", t:"pill", price:300, d:"筑基必备之物", use:null},
+  jiedandan:{n:"结金丹", t:"pill", price:2400,d:"结丹必备之物", use:null},
+  yuanyingdan:{n:"凝婴丹",t:"pill",price:12000,d:"结婴必备之物", use:null},
+  huashendan:{n:"化神丹",t:"pill",price:60000,d:"化神必备之物", use:null},
+
+  lingcao:  {n:"百年灵草", t:"mat", price:6,  d:"炼丹主料，坊市常收"},
+  yaodan:   {n:"妖兽内丹", t:"mat", price:18, d:"低阶妖丹，灵气驳杂"},
+  shoupi:   {n:"妖兽皮毛", t:"mat", price:5,  d:"粗制护具的材料"},
+  lingshi_ore:{n:"灵石矿簇",t:"mat", price:14, d:"可换取灵石"},
+
+  tie_jian: {n:"铁剑",   t:"eq", slot:"weapon", atk:4,  price:30,  d:"村口铁匠打的，能杀人"},
+  qingfeng: {n:"青锋剑", t:"eq", slot:"weapon", atk:14, price:220, d:"剑身泛青，寒光如水"},
+  hanmang:  {n:"寒芒剑", t:"eq", slot:"weapon", atk:45, price:1500,d:"剑出如霜，血不沾刃"},
+  feijian:  {n:"青竹蜂云剑",t:"eq",slot:"weapon",atk:180,price:9000,d:"御剑千里，斩敌于无形"},
+
+  buyi:     {n:"粗布道袍",t:"eq",slot:"armor", def:3,  price:20,  d:"遮体而已"},
+  hufu:     {n:"护身符", t:"eq", slot:"armor", def:12, price:260, d:"符纸温润，可挡一击"},
+  jiajia:   {n:"玄铁软甲",t:"eq", slot:"armor", def:40, price:1800,d:"贴身而着，刀枪难入"},
+  lingdun:  {n:"灵光护盾",t:"eq", slot:"armor", def:150,price:11000,d:"灵气凝盾，御敌于外"}
+};
+
+/* -------------------- 功法 -------------------- */
+const GONGFA = {
+  changchun:{n:"长春功",   mul:1.0,  price:0,     d:"绵长温养，进境缓慢却极少走火"},
+  yufeng:   {n:"御风诀",   mul:1.25, price:600,   d:"引风入脉，流转迅捷"},
+  qingyuan: {n:"青元剑诀", mul:1.55, price:3200,  d:"以剑意淬体，锋芒毕露"},
+  dayan:    {n:"大衍诀",   mul:2.0,  price:18000, d:"推演天机，以算代修"},
+  taishang: {n:"太上忘情", mul:2.8,  price:90000, d:"断尽七情，唯余大道"}
+};
+
+/* -------------------- 区域 -------------------- */
+const REGIONS = [
+  {n:"青石村外", r:0, l:1,  days:[2,5],   lv:1, d:"田埂与矮山，野狗出没，最是安全。"},
+  {n:"落霞坡",   r:0, l:4,  days:[5,12],  lv:2, d:"坡上生着零星灵草，偶有采药人往来。"},
+  {n:"黑风岭",   r:0, l:8,  days:[8,20],  lv:3, d:"终年阴风，岭上散修与妖兽争食。"},
+  {n:"幽泉涧",   r:0, l:12, days:[12,28], lv:4, d:"涧底泉眼通地脉，灵气浓，危险也浓。"},
+  {n:"万兽山",   r:1, l:1,  days:[20,45], lv:5, d:"妖兽盘踞，非筑基不可轻入。"},
+  {n:"乱星海",   r:2, l:1,  days:[30,70], lv:6, d:"万里海疆，星罗岛屿，杀机四伏。"},
+  {n:"坠魔谷",   r:3, l:1,  days:[45,90], lv:7, d:"魔气冲霄，传闻谷底有上古遗蜕。"}
+];
+
+/* -------------------- 敌人 -------------------- */
+const MOBS = {
+  1:[["灰毛野兔",30,2.9],["独眼山猫",38,3.5],["瘦狗",26,2.6],["野狼",42,3.9]],
+  2:[["青背狼",56,4.9],["山魈",63,5.4],["采药人的尸傀",59,5.2]],
+  3:[["黑风狼王",92,8.2],["铁背野猪",104,8.9],["炼气散修",96,8.5]],
+  4:[["幽泉蛇妖",128,11.4],["涧底石傀",140,12.2],["邪修",132,11.8]],
+  5:[["三尾灵狐",192,16.8],["铁甲犀",216,18],["万兽山主",204,17.4]],
+  6:[["星海蛟",720,66],["海寇修士",800,71],["化形妖修",760,68]],
+  7:[["魔将",2650,238],["坠魔谷守卫",3000,252],["血袍老祖",2820,244]]
+};
+
+/* -------------------- 工具 -------------------- */
+const $ = id => document.getElementById(id);
+const R  = (a,b) => a + Math.random()*(b-a);
+const RI = (a,b) => Math.floor(a + Math.random()*(b-a+1));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+function fmt(n){
+  n = Math.floor(n);
+  if (n >= 1e8) return (n/1e8).toFixed(2)+"亿";
+  if (n >= 1e4) return (n/1e4).toFixed(1)+"万";
+  return String(n);
+}
+
+/* -------------------- 状态 -------------------- */
+let S = null;
+let timer = null;
+let modalOpen = false;
+
+function freshState(name, rootName){
+  const root = ROOTS.find(r=>r.n===rootName) || ROOTS[0];
+  return {
+    v:1, name, root:root.n, rootMul:root.mul,
+    realm:0, layer:1,
+    exp:0, day:0, age:16,
+    hp:40, hurt:0,
+    money:12, rep:0,
+    insight: RI(6,12), physique: RI(6,12),
+    bag:{ huiqi:2, lingcao:1 },
+    equip:{ weapon:null, armor:null },
+    gongfa:"changchun",
+    known:["changchun"],
+    region:0,
+    buff:{ pozhang:false },
+    log:[],
+    lastSave: Date.now(),
+    stat:{ battles:0, wins:0, breaks:0, fails:0, explored:0 },
+    flags:{},
+    dead:false
+  };
+}
+
+/* -------------------- 属性计算 -------------------- */
+function stats(){
+  const r = REALMS[S.realm], li = S.layer;
+  const mul = r.mul;
+  const atk = Math.round(4 * mul * (1 + 0.18*(li-1)) * (1 + (S.physique-9)*0.02));
+  const hpMax = Math.round(40 * mul * (1 + 0.22*(li-1)) * (1 + (S.physique-9)*0.015));
+  const w = S.equip.weapon ? ITEMS[S.equip.weapon].atk : 0;
+  const a = S.equip.armor ? ITEMS[S.equip.armor].def : 0;
+  const atkAll = atk + w;
+  const defAll = Math.round(atkAll * 0.35) + a;
+  return { atk: atkAll, baseAtk: atk, def: defAll, hpMax, mul };
+}
+
+function expNeed(){
+  const r = REALMS[S.realm];
+  return Math.floor(r.base * Math.pow(r.grow, S.layer - 1));
+}
+
+function gainPerDay(){
+  const r = REALMS[S.realm];
+  const g = GONGFA[S.gongfa].mul;
+  const layerBoost = 1 + 0.3*(S.layer-1);
+  const insight = 1 + (S.insight-9)*0.015;
+  const wound = S.hurt > 0 ? 0.5 : 1;
+  return 6 * r.mul * layerBoost * S.rootMul * g * insight * wound;
+}
+
+function lifeMax(){
+  return REALMS[S.realm].life;
+}
+
+/* -------------------- 日志 -------------------- */
+function pushLog(text, cls){
+  if (!S) return;
+  S.log.push({t:text, c:cls||"", d:S.day});
+  if (S.log.length > 160) S.log.shift();
+  const box = $("log");
+  const el = document.createElement("p");
+  el.className = "le " + (cls||"");
+  el.textContent = text;
+  box.appendChild(el);
+  while (box.children.length > 40) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderLog(){
+  const box = $("log");
+  box.innerHTML = "";
+  const list = S.log.slice(-30);
+  list.forEach(e=>{
+    const p = document.createElement("p");
+    p.className = "le " + e.c;
+    p.textContent = e.t;
+    box.appendChild(p);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+/* -------------------- 头部渲染 -------------------- */
+function renderHeader(){
+  if (!S) return;
+  const st = stats();
+  const need = expNeed();
+  $("h-name").textContent = S.name;
+  $("h-realm").textContent = realmTitle(S.realm, S.layer);
+  const pct = Math.min(100, (S.exp/need)*100);
+  $("h-bar").style.width = pct + "%";
+  $("h-barw").classList.toggle("ready", S.exp >= need);
+  $("h-exp").innerHTML = "修为 <b>"+fmt(S.exp)+"</b> / "+fmt(need);
+  const lp = (S.age / lifeMax()*100);
+  $("h-life").innerHTML = "寿元 <b class='"+(lp>85?"warn":"")+"'>"+Math.floor(S.age)+"</b> / "+lifeMax();
+  $("h-money").innerHTML = "灵石 <b>"+fmt(S.money)+"</b>";
+  $("a-break").classList.toggle("gold", S.exp >= need);
+  $("a-break").textContent = S.exp >= need ? "突破" : "冲击瓶颈";
+}
+
+/* -------------------- 时间推进 -------------------- */
+function advanceDays(n, silent){
+  if (!S || S.dead) return;
+  let gained = 0;
+  for (let i=0;i<n;i++){
+    S.day++;
+    // 修为圆满时静坐入定，气机自锁，寿元不再损耗
+    const frozen = silent && S.exp >= expNeed();
+    if (!frozen) S.age += 1/DAYS_PER_YEAR;
+    if (S.hurt > 0) S.hurt--;
+    if (S.exp < expNeed()){
+      const g = gainPerDay();
+      S.exp = Math.min(expNeed(), S.exp + g);
+      gained += g;
+    }
+    const st = stats();
+    if (S.hp < st.hpMax) S.hp = Math.min(st.hpMax, S.hp + st.hpMax*0.02);
+    if (S.age >= lifeMax()){ die(); return; }
+    // 静坐状态下，小层瓶颈自动冲过；大境界仍需玩家亲自出手
+    if (silent && S.exp >= expNeed() && S.hurt === 0){
+      const rr = REALMS[S.realm];
+      if (S.layer < rr.layers){
+        S.layer++;
+        S.exp = 0;
+        S.hp = stats().hpMax;
+        pushLog("气机一转，自然而然晋入 "+realmTitle(S.realm,S.layer)+"。", "sys");
+      }
+    }
+  }
+  if (S.exp >= expNeed() && S.day - (S.flags.fullAt||-999) > 60){
+    S.flags.fullAt = S.day;
+    pushLog("修为早已圆满，你却还坐着。再坐下去只是空耗寿元。", "warn");
+  }
+  const yearsLeft = lifeMax() - S.age;
+  if (yearsLeft < 6 && !S.flags.warn5){ S.flags.warn5 = 1; pushLog("你感到筋骨在衰败。寿元不足六年了。", "bad"); }
+  if (yearsLeft < 2 && !S.flags.warn1){ S.flags.warn1 = 1; pushLog("夜里常常咳血。再不能突破，就要交代在这里了。", "bad"); }
+  return gained;
+}
+
+function die(){
+  S.dead = true;
+  stopTick();
+  openModal("寿元已尽",
+    "你在蒲团上坐了很久。\n某日清晨，阳光移过窗棂，你没能再睁开眼。\n\n"+
+    "享年 "+Math.floor(S.age)+" 岁，止步于 "+realmTitle(S.realm,S.layer)+"。\n"+
+    "一生杀伐 "+S.stat.wins+" 场，走过 "+S.stat.explored+" 次远行。",
+    [{t:"重新开始", f:()=>{ localStorage.removeItem(SAVE_KEY); location.reload(); }}]);
+}
+
+/* -------------------- 突破 -------------------- */
+function breakRate(){
+  const r = REALMS[S.realm];
+  const isBig = S.layer >= r.layers;
+  let base = isBig ? 0.52 : 0.88;
+  base += S.insight * 0.004;
+  base += (S.rootMul - 1) * 0.05;
+  if (S.buff.pozhang) base += 0.25;
+  if (S.flags.bottleneck) base -= 0.1;
+  return clamp(base, 0.08, 0.98);
+}
+
+function canBreak(){
+  if (!S) return {ok:false, why:"..."};
+  if (S.exp < expNeed()) return {ok:false, why:"修为未满"};
+  if (S.hurt > 0) return {ok:false, why:"你身上有伤，需静养 "+S.hurt+" 日"};
+  const r = REALMS[S.realm];
+  const isBig = S.layer >= r.layers;
+  if (isBig){
+    const next = REALMS[S.realm+1];
+    if (!next) return {ok:true};
+    if (next.need && !(S.bag[next.need] > 0))
+      return {ok:false, why:"需「"+ITEMS[next.need].n+"」方可冲击"+next.n};
+  }
+  return {ok:true};
+}
+
+function doBreak(){
+  const chk = canBreak();
+  if (!chk.ok){ pushLog("【不可突破】"+chk.why, "warn"); return; }
+  const r = REALMS[S.realm];
+  const isBig = S.layer >= r.layers;
+  const rate = breakRate();
+  const roll = Math.random();
+
+  // 消耗丹药
+  if (isBig){
+    const next = REALMS[S.realm+1];
+    if (next && next.need){
+      S.bag[next.need]--;
+      if (S.bag[next.need] <= 0) delete S.bag[next.need];
+    }
+  }
+  S.buff.pozhang = false;
+  advanceDays(isBig ? RI(60,120) : RI(10,30), true);
+
+  if (roll < rate){
+    S.stat.breaks++;
+    if (isBig){
+      S.realm++;
+      S.layer = 1;
+      S.exp = 0;
+      const st = stats();
+      S.hp = st.hpMax;
+      pushLog("天地灵气如潮涌入，你周身骨骼爆响。", "good");
+      pushLog("【突破】你已踏入 "+realmTitle(S.realm,S.layer)+"！寿元上限增至 "+lifeMax()+" 岁。", "break");
+      flashModal("境界已破", "你踏入 "+realmTitle(S.realm,S.layer)+"。\n寿元上限 "+lifeMax()+" 岁，可去更远处看看了。");
+    } else {
+      S.layer++;
+      S.exp = 0;
+      const st = stats();
+      S.hp = st.hpMax;
+      pushLog("【突破】修为大进，晋入 "+realmTitle(S.realm,S.layer)+"。", "good");
+    }
+  } else {
+    S.stat.fails++;
+    S.exp = Math.floor(S.exp * 0.65);
+    const st = stats();
+    S.hp = Math.max(1, Math.round(st.hpMax*0.5));
+    S.hurt = isBig ? RI(30,60) : RI(6,15);
+    pushLog("【失败】气机逆乱，一股血气冲上喉头。你吐出一口血。", "bad");
+    pushLog("修为散了三成，需静养 "+S.hurt+" 日。", "bad");
+    if (Math.random() < 0.25){
+      S.insight = Math.min(30, S.insight+1);
+      pushLog("痛定思痛，你隐约摸到了一点门槛。（悟性 +1）", "sys");
+    }
+  }
+  save(); renderHeader();
+}
+
+/* -------------------- 战斗 -------------------- */
+function makeMob(lv){
+  const pool = MOBS[lv] || MOBS[1];
+  const m = pick(pool);
+  const jitter = R(0.92, 1.1);
+  const hp = Math.round(m[1]*jitter);
+  const atk = Math.round(m[2]*jitter);
+  return {
+    n: m[0],
+    hp: hp,
+    hpMax: hp,
+    atk: atk,
+    def: Math.round(atk*0.3),
+    lv
+  };
+}
+
+function battle(mob, opt){
+  opt = opt || {};
+  const st = stats();
+  let myHp = S.hp;
+  let foeHp = mob.hp;
+  const lines = [];
+  let rounds = 0;
+  const maxRounds = opt.maxRounds || 22;
+
+  while (myHp > 0 && foeHp > 0 && rounds < maxRounds){
+    rounds++;
+    let dmg = Math.max(1, Math.round((st.atk - mob.def*0.5) * R(0.88,1.12)));
+    if (opt.power) dmg = Math.round(dmg * opt.power);
+    foeHp -= dmg;
+    if (foeHp <= 0) break;
+    const edmg = Math.max(1, Math.round((mob.atk - st.def*0.5) * R(0.88,1.12)));
+    myHp -= edmg;
+  }
+
+  const win = foeHp <= 0 && myHp > 0;
+  S.stat.battles++;
+  if (win) S.stat.wins++;
+
+  if (win){
+    S.hp = Math.max(1, Math.round(myHp));
+    const money = Math.round(mob.lv * RI(4,9) * R(0.9,1.3));
+    const exp = Math.round(gainPerDay() * RI(6,14) * (1 + mob.lv*0.15));
+    S.money += money;
+    S.exp = Math.min(expNeed(), S.exp + exp);
+    let extra = "";
+    if (Math.random() < 0.42){
+      const drops = {
+        1:["shoupi","lingcao"], 2:["shoupi","lingcao","yaodan"],
+        3:["lingcao","yaodan"], 4:["yaodan","lingshi_ore"],
+        5:["yaodan","lingshi_ore"], 6:["yaodan","lingshi_ore"], 7:["yaodan","lingshi_ore"]
+      };
+      const d = pick(drops[mob.lv] || ["lingcao"]);
+      addItem(d, 1);
+      extra = "\n拾得 "+ITEMS[d].n+" ×1。";
+    }
+    return {
+      win:true,
+      text: "你与"+mob.n+"缠斗了约 "+rounds+" 回合。\n剑光过处，"+mob.n+"闷吼一声栽倒。\n\n"+
+            "得灵石 "+money+"，修为 +"+fmt(exp)+"。"+extra,
+      rounds
+    };
+  } else {
+    S.hp = Math.max(1, Math.round(st.hpMax*0.15));
+    S.hurt = Math.max(S.hurt, RI(2,6));
+    return {
+      win:false,
+      text: "你与"+mob.n+"缠斗了约 "+rounds+" 回合。\n气血翻涌，你脚步一乱，被它撞在胸口。\n\n"+
+            "你勉强退走，伤得不轻，需静养 "+S.hurt+" 日。",
+      rounds
+    };
+  }
+}
+
+/* -------------------- 物品 -------------------- */
+function addItem(id, n){
+  S.bag[id] = (S.bag[id]||0) + n;
+}
+function removeItem(id, n){
+  if (!S.bag[id]) return false;
+  S.bag[id] -= n;
+  if (S.bag[id] <= 0) delete S.bag[id];
+  return true;
+}
+
+/* -------------------- 事件系统 -------------------- */
+function ev(title, desc, choices){
+  return {t:title, d:desc, c:choices};
+}
+
+const EVENTS = [
+  // 1 采药人
+  {w:8, gen:()=> ev("山道采药人",
+    "一个背着竹篓的老汉坐在石头上啃干粮，篓里露出几株带露的灵草。\n他见你走近，警惕地把篓往身后挪了挪。",
+    [
+      {t:"出钱买他的灵草", f:()=>{
+        if (S.money < 30) return "你摸了摸口袋，掏不出三十灵石。老汉摇摇头，继续啃饼。";
+        S.money -= 30; addItem("lingcao", RI(2,4));
+        return "老汉笑了，从篓里摸出几株灵草递给你。\n「后生，这山里头最近不太平。」\n\n得百年灵草 ×"+(S.bag.lingcao>0?"若干":"几株")+"。";
+      }},
+      {t:"问他山里的路", f:()=>{
+        S.insight = Math.min(30, S.insight+1);
+        return "老汉絮絮讲了半日：哪条道有狼，哪处泉眼的水不能喝。\n你听出些门道，悟性 +1。";
+      }},
+      {t:"不多话，走开", f:()=> "你绕过老汉继续赶路。山风把他的咳嗽声吹得很远。"}
+    ])},
+  // 2 破败洞府
+  {w:7, gen:()=> ev("破败洞府",
+    "藤蔓后头露出半截石门，门缝里透着陈年的阴气。\n门楣上刻着三个字，被苔藓盖住了一半。",
+    [
+      {t:"推开石门进去", f:()=>{
+        const r = Math.random();
+        if (r < 0.42){
+          const m = RI(40,120); S.money += m;
+          return "洞内只有一具盘坐的枯骨，膝上搁着个储物袋。\n你取了袋子，里头有灵石 "+m+"。\n枯骨无碑无名，你替他掩了土。";
+        } else if (r < 0.7){
+          S.exp = Math.min(expNeed(), S.exp + gainPerDay()*RI(30,60));
+          return "石壁上刻着密密麻麻的字，是一篇残缺功法。\n你读了三日，虽不全懂，修为却涨了一截。";
+        } else {
+          const mob = makeMob(Math.min(7, (REGIONS[S.region].lv)+1));
+          const res = battle(mob, {maxRounds:20});
+          return "洞中并非空无一人。\n\n"+res.text;
+        }
+      }},
+      {t:"绕开，不惹是非", f:()=> "你记下这处地方，转身走了。有些门推开就关不上了。"}
+    ])},
+  // 3 妖兽拦路
+  {w:10, gen:()=>{
+    const mob = makeMob(REGIONS[S.region].lv);
+    return ev("凶兽拦路",
+      "草丛猛地一分，一头"+mob.n+"横在路中，前爪刨地，喉咙里滚着低吼。",
+      [
+        {t:"拔剑迎战", f:()=> battle(mob).text},
+        {t:"绕道，多走几日", f:()=>{
+          const d = RI(3,8); advanceDays(d, true);
+          return "你退回岔路，绕了 "+d+" 日才回到原处。多费了工夫，但活着。";
+        }},
+        {t:"丢下灵石引开它", f:()=>{
+          if (S.money < 20) return "你摸遍全身，掏不出几颗灵石。它显然也看出来了。\n\n"+battle(mob).text;
+          S.money -= 20;
+          return "你把二十灵石抛向远处。它扑了过去，你趁机脱身。";
+        }}
+      ]);
+  }},
+  // 4 斗法旁观
+  {w:6, gen:()=> ev("林中斗法",
+    "前方林间剑光乱闪，两个修士正斗得难解难分，地上已躺着一个人。\n没人注意到你。",
+    [
+      {t:"趁乱摸走地上的东西", f:()=>{
+        if (Math.random() < 0.6){
+          const m = RI(30,90); S.money += m; addItem("yaodan",1);
+          return "你贴着草根爬过去，从死人怀里摸出储物袋。\n得灵石 "+m+"、妖兽内丹 ×1。\n身后剑光炸开，你没敢回头。";
+        }
+        const mob = makeMob(REGIONS[S.region].lv+1);
+        return "你刚弯腰，其中一人扭过头来。\n\n"+battle(mob).text;
+      }},
+      {t:"远远绕开", f:()=> "你压低身形，从坡后绕了过去。修士之间的事，掺和不起。"}
+    ])},
+  // 5 玉简
+  {w:5, gen:()=> ev("溪底玉简",
+    "溪水退了一截，露出底下的青石。石缝里卡着一枚灰扑扑的玉简。",
+    [
+      {t:"撬开石缝取出来", f:()=>{
+        S.exp = Math.min(expNeed(), S.exp + gainPerDay()*RI(20,45));
+        S.insight = Math.min(30, S.insight+1);
+        return "玉简里是一段驳杂的修行心得，作者署名早已磨平。\n你读过一遍，修为小涨，悟性 +1。";
+      }},
+      {t:"不去动它", f:()=> "你看了会儿，终究没伸手。水底的东西未必是好东西。"}
+    ])},
+  // 6 受伤修士
+  {w:6, gen:()=> ev("路边的伤者",
+    "一个年轻修士靠树坐着，道袍上全是血，见你过来，手里捏紧了半张符。",
+    [
+      {t:"给他一枚回气丹", f:()=>{
+        if (!S.bag.huiqi) return "你翻了翻行囊，一粒回气丹也没有。他苦笑了一下。";
+        removeItem("huiqi",1);
+        if (Math.random() < 0.7){
+          const m = RI(50,120); S.money += m; S.rep += 2;
+          return "他吞下丹药，喘了半晌，从怀里掏出一袋灵石塞给你。\n「青石镇柳家，记你一份情。」\n得灵石 "+m+"，声望 +2。";
+        }
+        S.rep += 1;
+        return "他吞了丹药，勉强站起，抱拳一礼便走了。\n你不知道他叫什么，也没打算问。";
+      }},
+      {t:"问他值多少灵石", f:()=>{
+        S.rep -= 2;
+        const m = RI(20,60); S.money += m;
+        return "他盯着你看了很久，把身上最后一点灵石给了你。\n得灵石 "+m+"，声望 -2。\n走出很远，你还觉得背上发凉。";
+      }},
+      {t:"径直走开", f:()=> "你看了他一眼，继续走。这世道，救人也是个赌。"}
+    ])},
+  // 7 灵气潮汐
+  {w:5, gen:()=> ev("灵潮",
+    "夜半，山谷里忽然起雾。雾气带着甜意，吸入一口，浑身经脉都在发烫。",
+    [
+      {t:"就地打坐，吸纳灵潮", f:()=>{
+        const g = Math.round(gainPerDay()*RI(80,160));
+        S.exp = Math.min(expNeed(), S.exp + g);
+        return "你盘膝坐到天明，灵雾顺着毛孔往里钻。\n修为 +"+fmt(g)+"。";
+      }},
+      {t:"趁雾遮盖，往前多走一段", f:()=>{
+        const d = RI(2,5); advanceDays(d, true);
+        S.money += RI(10,40);
+        return "雾里什么都看不清，你走了 "+d+" 日，反倒摸到一处野矿。\n得灵石若干。";
+      }}
+    ])},
+  // 8 散修兜售
+  {w:7, gen:()=> ev("兜售丹药的散修",
+    "一个獐头鼠目的修士拦住你，掌心摊开三粒泛着幽光的丹药。\n「筑基丹，三百灵石，便宜你了。」",
+    [
+      {t:"买下（300 灵石）", f:()=>{
+        if (S.money < 300) return "你把储物袋翻了个底朝天，不够。他嗤笑一声收起丹药。";
+        S.money -= 300;
+        if (Math.random() < 0.45){
+          addItem("zhujidan",1);
+          return "丹药入手沉甸甸的，药香纯正。\n这趟不亏。得筑基丹 ×1。";
+        }
+        addItem("juqi",2);
+        return "你回去一验，只是两粒聚气丹搓大了些。\n人早跑没影了。";
+      }},
+      {t:"摇头走开", f:()=> "你没接话。他讨了个没趣，转身去拦下一个人。"}
+    ])},
+  // 9 灵果
+  {w:6, gen:()=> ev("古树灵果",
+    "崖边老树上挂着几枚朱红果子，树皮已被啃得斑驳——有东西在守着。",
+    [
+      {t:"爬上去摘", f:()=>{
+        if (Math.random() < 0.55){
+          const g = Math.round(gainPerDay()*RI(40,90));
+          S.exp = Math.min(expNeed(), S.exp+g);
+          return "你摘了三枚，酸涩难当，但入腹后暖意直升丹田。\n修为 +"+fmt(g)+"。";
+        }
+        const mob = makeMob(REGIONS[S.region].lv+1);
+        return "枝条一晃，一团黑影从树冠里扑下来。\n\n"+battle(mob).text;
+      }},
+      {t:"不冒这个险", f:()=> "你退了两步。守着的东西多半比果子值钱。"}
+    ])},
+  // 10 劫道
+  {w:8, gen:()=>{
+    const mob = makeMob(REGIONS[S.region].lv);
+    mob.n = "劫道的散修";
+    return ev("有人劫道",
+      "三个人从两侧包过来，为首那个手里转着一柄小刀。\n「留下东西，滚。」",
+      [
+        {t:"硬拼", f:()=> battle(mob).text},
+        {t:"交出灵石", f:()=>{
+          const lose = Math.min(S.money, RI(40,100));
+          S.money -= lose;
+          return "你把灵石袋扔过去。他们掂了掂，让开了路。\n损失灵石 "+lose+"。";
+        }},
+        {t:"转身就跑", f:()=>{
+          if (Math.random() < 0.5){
+            const d = RI(2,6); advanceDays(d, true);
+            return "你撒腿就跑，跑了 "+d+" 日才敢停下。东西还在，命也在。";
+          }
+          const mob2 = makeMob(REGIONS[S.region].lv);
+          const r = battle(mob2, {maxRounds:14});
+          return "你跑了没几步就被绊倒。\n\n"+r.text;
+        }}
+      ]);
+  }},
+  // 11 灵矿
+  {w:5, gen:()=> ev("露头的灵矿",
+    "山壁裂开一道缝，缝里嵌着星星点点的荧光。是灵石矿。",
+    [
+      {t:"用剑凿下来", f:()=>{
+        const m = RI(60,180); S.money += m;
+        const d = RI(4,10); advanceDays(d,true);
+        return "你凿了 "+d+" 日，指甲缝里全是血。\n得灵石 "+m+"。";
+      }},
+      {t:"记下位置，先走", f:()=>{
+        S.flags.mine = (S.flags.mine||0)+1;
+        return "你记住了方位。若日后有闲暇，或许能再来。";
+      }}
+    ])},
+  // 12 村庄求助
+  {w:5, gen:()=> ev("荒村",
+    "村口没人，屋子都空着。一个老妇从门后探出头，说夜里山里的东西又来了。",
+    [
+      {t:"留下守一夜", f:()=>{
+        const mob = makeMob(Math.max(1, REGIONS[S.region].lv-1));
+        const r = battle(mob, {maxRounds:20});
+        if (r.win){
+          S.rep += 3; S.money += RI(30,80);
+          return "入夜，它果然来了。\n\n"+r.text+"\n\n天亮时，村里人把钱袋塞进你手里。声望 +3。";
+        }
+        return "入夜，它果然来了。\n\n"+r.text;
+      }},
+      {t:"给她几块灵石就走", f:()=>{
+        if (S.money < 20) return "你掏了掏，只有零星几块。老妇还是道了谢。";
+        S.money -= 20; S.rep += 1;
+        return "老妇捧着灵石，手抖得厉害。\n声望 +1。";
+      }},
+      {t:"绕开村子", f:()=> "你从村外的小路走了。村里的狗一直叫到很远。"}
+    ])},
+  // 13 顿悟
+  {w:4, gen:()=> ev("顿悟",
+    "你在一块石头上坐了很久。风从耳边过，忽然间，许多想不通的事一起通了。",
+    [
+      {t:"静坐体悟", f:()=>{
+        const g = Math.round(gainPerDay()*RI(60,120));
+        S.exp = Math.min(expNeed(), S.exp+g);
+        if (Math.random()<0.4) S.insight = Math.min(30,S.insight+1);
+        return "你坐到日落。修为 +"+fmt(g)+"。";
+      }}
+    ])},
+  // 14 魔修
+  {w:5, gen:()=>{
+    const mob = makeMob(Math.min(7, REGIONS[S.region].lv+1));
+    mob.n = "黑袍魔修";
+    return ev("黑袍魔修",
+      "一个黑袍人立在路中央，脸上罩着煞气。\n「你的血，闻着不错。」",
+      [
+        {t:"抢先出手", f:()=> battle(mob, {power:1.1}).text},
+        {t:"立刻遁走", f:()=>{
+          if (Math.random()<0.55){
+            const d = RI(3,7); advanceDays(d,true);
+            S.hp = Math.max(1, Math.round(stats().hpMax*0.5));
+            return "你掐了个遁诀，跌跌撞撞跑了 "+d+" 日。\n五脏都在疼，但活下来了。";
+          }
+          return "你刚转身，后背就是一凉。\n\n"+battle(mob,{maxRounds:12}).text;
+        }}
+      ]);
+  }},
+  // 15 陷阱
+  {w:5, gen:()=> ev("捕兽陷阱",
+    "脚下枯叶一软——是陷阱。你及时稳住身形，坑底插着削尖的木桩。",
+    [
+      {t:"小心爬出去", f:()=>{
+        if (Math.random()<0.7) return "你扣着土壁爬了上来，只擦破些皮。";
+        const st = stats();
+        S.hp = Math.max(1, Math.round(st.hpMax*0.4));
+        S.hurt = RI(3,8);
+        return "土壁塌了一块。你摔了下去，小腿被木刺划开一道口子。\n需静养数日。";
+      }},
+      {t:"在坑底找找有没有猎物", f:()=>{
+        if (Math.random()<0.5){
+          addItem("shoupi", RI(1,3));
+          return "坑底躺着一只还没烂透的山鹿。\n得妖兽皮毛 ×若干。";
+        }
+        return "坑底只有骨头。你爬出去时天已经黑了。";
+      }}
+    ])},
+  // 16 秘境入口
+  {w:3, gen:()=> ev("秘境入口",
+    "山壁上裂开一道幽深的缝，里面透出不属于这世间的光。\n旁边石上刻着：「入者，慎之。」",
+    [
+      {t:"进去看看", f:()=>{
+        const roll = Math.random();
+        if (roll < 0.35){
+          const g = Math.round(gainPerDay()*RI(120,240));
+          S.exp = Math.min(expNeed(), S.exp+g);
+          S.money += RI(100,300);
+          return "里面是一间石室，灵气浓得几乎凝成水。\n你坐了不知多久。\n修为 +"+fmt(g)+"，另得灵石若干。";
+        }
+        if (roll < 0.72){
+          const mob = makeMob(Math.min(7, REGIONS[S.region].lv+2));
+          mob.n = "守境的石傀";
+          return "石室中央立着一具石傀，眼窝亮起。\n\n"+battle(mob).text;
+        }
+        const st = stats();
+        S.hp = Math.max(1, Math.round(st.hpMax*0.3));
+        S.hurt = RI(20,40);
+        return "你刚跨进去，整面石壁就开始合拢。\n你连滚带爬退出来，半边身子都是血。\n需静养多日。";
+      }},
+      {t:"在门口坐一会儿就走", f:()=>{
+        const g = Math.round(gainPerDay()*RI(15,30));
+        S.exp = Math.min(expNeed(), S.exp+g);
+        return "你在洞口打坐半日，灵气确实比外头浓。\n修为 +"+fmt(g)+"。";
+      }}
+    ])},
+  // 17 女修求助
+  {w:4, gen:()=> ev("树下的人",
+    "一个女修倒在树下，衣衫沾了泥，怀里死死抱着个包裹。\n她看见你，先是恐惧，然后咬了咬嘴唇。",
+    [
+      {t:"背她走一段", f:()=>{
+        const d = RI(3,8); advanceDays(d,true);
+        if (Math.random()<0.65){
+          const m = RI(60,150); S.money += m; S.rep += 2;
+          return "走了 "+d+" 日，她伤好些了，把包裹分了一半给你。\n得灵石 "+m+"，声望 +2。\n她没说自己是谁。";
+        }
+        return "走了 "+d+" 日，她还是没撑住。\n你把包裹还给了她家里人——如果你找得到的话。";
+      }},
+      {t:"先看看包裹里是什么", f:()=>{
+        S.rep -= 3;
+        S.money += 80;
+        return "包裹里是几瓶丹药和一袋灵石。\n她把脸埋进臂弯里，一句话没说。\n声望 -3。";
+      }},
+      {t:"当她不存在", f:()=> "你从她身边走过去。这条路上死人见得多了。"}
+    ])},
+  // 18 枯井
+  {w:5, gen:()=> ev("枯井底",
+    "井口塌了一半。往下看，井底有一堆白骨，和一个布袋。",
+    [
+      {t:"下去看看", f:()=>{
+        if (Math.random()<0.6){
+          const m = RI(50,140); S.money += m;
+          if (Math.random()<0.4) addItem("huiqi", RI(1,2));
+          return "布袋子已经烂了，里面的灵石倒还完好。\n得灵石 "+m+"，另有些丹药。";
+        }
+        const st = stats();
+        S.hp = Math.max(1, Math.round(st.hpMax*0.5));
+        S.hurt = RI(4,10);
+        return "你刚踩到井底，白骨堆里窜出一窝毒虫。\n你拼命爬上来，身上被咬了几十口。";
+      }},
+      {t:"丢块石头试探", f:()=> "石头落下去，井底有东西动了一下。\n你决定不下去。"}
+    ])},
+  // 19 拍卖
+  {w:4, gen:()=> ev("坊市拍卖",
+    "坊市角落里临时开了个小拍卖，台上摆着几样东西，底下人声鼎沸。",
+    [
+      {t:"举牌争那件古物", f:()=>{
+        const cost = RI(200,500);
+        if (S.money < cost) return "你举了一次牌就被人压下去，只好讪讪坐下。";
+        S.money -= cost;
+        if (Math.random()<0.5){
+          addItem("pozhang", 1);
+          return "你以 "+cost+" 灵石拿下那只木匣，里面是一粒破障丹。\n值。";
+        }
+        addItem("lingcao", RI(2,3));
+        return "木匣打开，是几株上了年份的灵草。\n算不上亏，也绝算不上值。";
+      }},
+      {t:"坐在后排看热闹", f:()=>{
+        S.insight = Math.min(30, S.insight+1);
+        return "你听了半场，倒是听出些门道：谁的货真，谁的货假。\n悟性 +1。";
+      }}
+    ])},
+  // 20 同修切磋
+  {w:5, gen:()=> ev("山道遇同修",
+    "一个和你差不多年纪的修士拦下你，拱手道：「道友，可愿切磋一二？」",
+    [
+      {t:"应战", f:()=>{
+        const mob = makeMob(REGIONS[S.region].lv);
+        mob.n = "同修";
+        const r = battle(mob, {maxRounds:18});
+        if (r.win){
+          S.rep += 1;
+          return r.text+"\n\n他抱拳大笑：「受教了。」声望 +1。";
+        }
+        return r.text;
+      }},
+      {t:"推辞", f:()=> "你摆摆手。他也不恼，笑着走了。"}
+    ])},
+  // 21 雨夜
+  {w:5, gen:()=> ev("山雨",
+    "雨说来就来，砸得人睁不开眼。你不得不在崖下寻个遮蔽。",
+    [
+      {t:"在崖下打坐等雨停", f:()=>{
+        const d = RI(2,5); advanceDays(d,true);
+        const g = Math.round(gainPerDay()*d*1.2);
+        S.exp = Math.min(expNeed(), S.exp+g);
+        return "雨下了 "+d+" 日。你倒也不亏，修为 +"+fmt(g)+"。";
+      }},
+      {t:"冒雨赶路", f:()=>{
+        const d = RI(1,3); advanceDays(d,true);
+        if (Math.random()<0.4){
+          S.hurt = RI(2,5);
+          return "你淋了 "+d+" 日，寒气入体，回去后病了一场。";
+        }
+        const m = RI(20,60); S.money += m;
+        return "雨中你反倒撞见一株被冲出来的野参。\n得灵石 "+m+"。";
+      }}
+    ])},
+  // 22 陌生老者
+  {w:3, gen:()=> ev("道旁老者",
+    "一个衣衫褴褛的老者在道旁晒太阳，见你走来，忽然开口：\n「小子，你身上这功法，练岔了。」",
+    [
+      {t:"请教他", f:()=>{
+        if (Math.random()<0.55){
+          S.insight = Math.min(30, S.insight+2);
+          const g = Math.round(gainPerDay()*RI(30,70));
+          S.exp = Math.min(expNeed(), S.exp+g);
+          return "老者抬手在你背上点了三下，一股暖流窜遍全身。\n「记住这个走法。」\n悟性 +2，修为 +"+fmt(g)+"。";
+        }
+        return "老者絮絮说了半个时辰，你一句也没听懂。\n「罢了，是我多嘴。」他摆摆手，闭上眼继续晒太阳。";
+      }},
+      {t:"不理他", f:()=> "你加快脚步走过去。身后传来一声笑，听不出是嘲讽还是可惜。"}
+    ])}
+];
+
+function drawEvent(){
+  const total = EVENTS.reduce((a,e)=>a+e.w, 0);
+  let r = Math.random()*total;
+  for (const e of EVENTS){
+    r -= e.w;
+    if (r <= 0) return e.gen();
+  }
+  return EVENTS[0].gen();
+}
+
+/* -------------------- 模态框 -------------------- */
+function openModal(title, body, choices){
+  $("m-title").textContent = title;
+  $("m-body").innerHTML = "";
+  body.split("\n").forEach(line=>{
+    const p = document.createElement("p");
+    p.style.margin = "0 0 6px";
+    p.textContent = line;
+    $("m-body").appendChild(p);
+  });
+  const cbox = $("m-choices");
+  cbox.innerHTML = "";
+  (choices||[{t:"知道了", f:null}]).forEach((c,i)=>{
+    const b = document.createElement("button");
+    b.className = "btn" + (i===0 ? " primary" : "");
+    b.style.padding = "12px";
+    b.textContent = c.t;
+    b.onclick = ()=>{
+      closeModal();
+      if (c.f){
+        const res = c.f();
+        if (res) pushLog(res);
+      }
+      save(); renderHeader(); renderTab();
+    };
+    cbox.appendChild(b);
+  });
+  modalOpen = true;
+  $("mask").classList.add("on");
+  $("modal").classList.add("on");
+}
+
+function flashModal(title, body){
+  openModal(title, body, [{t:"好", f:null}]);
+}
+
+function closeModal(){
+  modalOpen = false;
+  $("mask").classList.remove("on");
+  $("modal").classList.remove("on");
+}
+
+/* -------------------- 主循环 -------------------- */
+function startTick(){
+  if (timer) clearInterval(timer);
+  timer = setInterval(()=>{
+    if (!S || S.dead || modalOpen) return;
+    advanceDays(1, true);
+    renderHeader();
+  }, TICK_MS);
+}
+function stopTick(){
+  if (timer){ clearInterval(timer); timer = null; }
+}
+
+/* -------------------- 存档 -------------------- */
+function save(){
+  if (!S) return;
+  S.lastSave = Date.now();
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){}
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || d.v !== 1) return null;
+    return d;
+  }catch(e){ return null; }
+}
+
+function settleOffline(){
+  const elapsed = (Date.now() - (S.lastSave||Date.now()))/1000;
+  if (elapsed < 60) return;
+  const days = Math.min(elapsed / (TICK_MS/1000), OFFLINE_CAP_DAYS);
+  const realDays = Math.floor(days * OFFLINE_RATE);
+  if (realDays < 5) return;
+  const beforeName = realmTitle(S.realm,S.layer);
+  // 离线只结算修为与自然晋层，不推寿元
+  for (let i=0;i<realDays;i++){
+    if (S.exp < expNeed()) S.exp = Math.min(expNeed(), S.exp + gainPerDay());
+    if (S.exp >= expNeed()){
+      const rr = REALMS[S.realm];
+      if (S.layer < rr.layers){
+        S.layer++; S.exp = 0; S.hp = stats().hpMax;
+      } else break;
+    }
+  }
+  const afterName = realmTitle(S.realm,S.layer);
+  setTimeout(()=>{
+    const tail = afterName !== beforeName ? "，已自然晋入 "+afterName : "";
+    pushLog("你从入定中醒来，窗外已过了些时日。（离线 "+realDays+" 日"+tail+"）", "sys");
+    renderHeader();
+  }, 400);
+}
+
+/* -------------------- 操作 -------------------- */
+function actTrain(){
+  if (!S || S.dead) return;
+  if (S.exp >= expNeed()){
+    pushLog("修为已满，再坐下去也是徒然。该冲击瓶颈了。", "warn");
+    renderHeader();
+    return;
+  }
+  const before = S.exp;
+  advanceDays(30, true);
+  const g = S.exp - before;
+  pushLog("你闭目内视，一坐便是月余。修为 +"+fmt(g)+"。");
+  save(); renderHeader(); renderTab();
+}
+
+function actExplore(){
+  if (!S || S.dead) return;
+  const opened = REGIONS.map((r,i)=>({r,i})).filter(o=>canEnter(o.r));
+  const choices = opened.map(o=>({
+    t: o.r.n + "  (" + o.r.days[0] + "-" + o.r.days[1] + "日)",
+    f: ()=> doExplore(o.i)
+  }));
+  choices.push({t:"算了，还是在家待着", f:null});
+  openModal("去往何处", "你收拾好行囊，站在岔路口。", choices);
+}
+
+function canEnter(r){
+  if (S.realm < r.r) return false;
+  if (S.realm === r.r && S.layer < r.l) return false;
+  return true;
+}
+
+function doExplore(idx){
+  const r = REGIONS[idx];
+  S.region = idx;
+  S.stat.explored++;
+  const days = RI(r.days[0], r.days[1]);
+  advanceDays(days, true);
+  if (S.dead) return;
+
+  // 30% 空手，70% 事件
+  if (Math.random() < 0.28){
+    const m = RI(8, 8 + r.lv*18);
+    S.money += m;
+    pushLog("你在"+r.n+"走了 "+days+" 日，没遇上什么，只捡了点零碎。灵石 +"+m+"。");
+    renderHeader();
+    return;
+  }
+  const e = drawEvent();
+  // 事件延后到 modal 关闭后再开，避免叠加
+  setTimeout(()=>{
+    openModal(e.t, e.d, e.c);
+  }, 260);
+}
+
+function actBreak(){
+  if (!S || S.dead) return;
+  const chk = canBreak();
+  if (!chk.ok){
+    flashModal("时机未到", chk.why + "\n\n可先去坊市或山里找找办法。");
+    return;
+  }
+  const rate = breakRate();
+  const r = REALMS[S.realm];
+  const isBig = S.layer >= r.layers;
+  const nameNext = isBig ? realmTitle(S.realm+1, 1) : realmTitle(S.realm, S.layer+1);
+  openModal("冲击"+nameNext,
+    "你盘膝坐定，气沉丹田。\n经脉里的灵气开始冲撞关隘。\n\n成功率约 "+Math.round(rate*100)+"%"+
+    (S.buff.pozhang?"（已备破障丹）":"")+"\n\n成则更进一步，败则修为倒退、伤及根本。",
+    [
+      {t:"冲！", f:()=>{ doBreak(); }},
+      {t:"再等等", f:null}
+    ]);
+}
+
+/* -------------------- 渲染 ---------- */ 
+let currentTab = "cult";
+
+function renderTab(){
+  if (!S) return;
+  if (currentTab === "char") renderChar();
+  else if (currentTab === "bag") renderBag();
+  else if (currentTab === "shop") renderShop();
+  else if (currentTab === "book") renderBook();
+}
+
+function renderChar(){
+  const st = stats();
+  const r = REALMS[S.realm];
+  const nextNeed = REALMS[S.realm+1] ? REALMS[S.realm+1].n : null;
+  $("tab-char").innerHTML = `
+  <div class="card">
+    <h3>道途</h3>
+    <div class="kv"><span>道号</span><b>${S.name}</b></div>
+    <div class="kv"><span>境界</span><b class="g">${realmTitle(S.realm,S.layer)}</b></div>
+    <div class="kv"><span>灵根</span><b>${S.root} <span class="tag">×${S.rootMul.toFixed(2)}</span></b></div>
+    <div class="kv"><span>年龄</span><b>${Math.floor(S.age)} / ${lifeMax()} 岁</b></div>
+    <div class="kv"><span>天赋</span><b>悟性 ${S.insight} · 根骨 ${S.physique}</b></div>
+  </div>
+  <div class="card">
+    <h3>斗法之能</h3>
+    <div class="kv"><span>攻伐</span><b>${st.atk}</b></div>
+    <div class="kv"><span>护体</span><b>${st.def}</b></div>
+    <div class="kv"><span>气血</span><b>${Math.round(S.hp)} / ${st.hpMax}</b></div>
+    ${S.hurt>0?`<div class="kv"><span>伤势</span><b class="r">需静养 ${S.hurt} 日</b></div>`:""}
+  </div>
+  <div class="card">
+    <h3>功法</h3>
+    <div class="kv"><span>主修</span><b>${GONGFA[S.gongfa].n} <span class="tag">×${GONGFA[S.gongfa].mul}</span></b></div>
+    ${Object.keys(GONGFA).filter(k=>S.known.includes(k) && k!==S.gongfa).map(k=>
+      `<div class="row"><div><div class="nm">${GONGFA[k].n}</div><div class="ds">${GONGFA[k].d}</div></div>
+       <div class="rt"><button class="btn sm" onclick="switchGongfa('${k}')">修习</button></div></div>`).join("") || 
+      `<p class="hint">尚无其他功法。坊市或山野深处或有传承。</p>`}
+  </div>
+  <div class="card">
+    <h3>这一世</h3>
+    <div class="kv"><span>斗法</span><b>${S.stat.battles} 场 · 胜 ${S.stat.wins}</b></div>
+    <div class="kv"><span>突破</span><b>成 ${S.stat.breaks} · 败 ${S.stat.fails}</b></div>
+    <div class="kv"><span>远行</span><b>${S.stat.explored} 次</b></div>
+    <div class="kv"><span>声望</span><b>${S.rep}</b></div>
+  </div>`;
+}
+
+function renderBag(){
+  const keys = Object.keys(S.bag).filter(k=>S.bag[k]>0);
+  const eqs = Object.keys(ITEMS).filter(k=>ITEMS[k].t==="eq");
+  let html = `<div class="card"><h3>随身之物</h3>`;
+  if (!keys.length) html += `<div class="empty">空空如也</div>`;
+  else {
+    keys.forEach(k=>{
+      const it = ITEMS[k];
+      const usable = it.use && k !== "zhujidan" && k!=="jiedandan" && k!=="yuanyingdan" && k!=="huashendan";
+      html += `<div class="row">
+        <div><div class="nm">${it.n} <span class="tag">×${S.bag[k]}</span></div><div class="ds">${it.d||""}</div></div>
+        <div class="rt">${usable?`<button class="btn sm" onclick="useItem('${k}')">服用</button>`:
+          (it.t==="mat"?`<button class="btn sm" onclick="sellItem('${k}',1)">售 1</button>`:``)}</div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  html += `<div class="card"><h3>法器</h3>`;
+  const owned = eqs.filter(k=>S.bag[k]>0);
+  if (!owned.length) html += `<p class="hint">没有法器。空手对敌，全凭肉身。</p>`;
+  else owned.forEach(k=>{
+    const it = ITEMS[k];
+    const on = S.equip[it.slot] === k;
+    html += `<div class="row">
+      <div><div class="nm">${it.n} ${on?'<span class="tag on">已佩</span>':''}</div>
+      <div class="ds">${it.d} ${it.atk?('· 攻 +'+it.atk):('· 护 +'+it.def)}</div></div>
+      <div class="rt"><button class="btn sm" onclick="equipItem('${k}')">${on?'卸下':'佩上'}</button></div>
+    </div>`;
+  });
+  html += `</div>`;
+  $("tab-bag").innerHTML = html;
+}
+
+function renderShop(){
+  const list = ["huiqi","juqi","pozhang","huiling","lingcao","yaodan","tie_jian","qingfeng","hanyang","buyi","hufu","jiajia","yufeng","qingyuan"];
+  const sellables = Object.keys(S.bag).filter(k=>S.bag[k]>0 && ITEMS[k].t==="mat");
+  let html = `<div class="card"><h3>坊市 · 售</h3>`;
+  ["huiqi","juqi","pozhang","huiling","zhujidan","jiedandan"].forEach(k=>{
+    const it = ITEMS[k];
+    const afford = S.money >= it.price;
+    html += `<div class="row">
+      <div><div class="nm">${it.n}</div><div class="ds">${it.d}</div></div>
+      <div class="rt"><span class="price">${it.price}</span>
+      <button class="btn sm ${afford?'':'off'}" onclick="buyItem('${k}')">买</button></div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card"><h3>法器 · 功诀</h3>`;
+  ["tie_jian","qingfeng","hanmang","buyi","hufu","jiajia"].forEach(k=>{
+    const it = ITEMS[k];
+    const afford = S.money >= it.price;
+    const owned = S.bag[k]>0;
+    html += `<div class="row">
+      <div><div class="nm">${it.n} ${owned?'<span class="tag eq">已有</span>':''}</div>
+      <div class="ds">${it.atk?('攻 +'+it.atk):('护 +'+it.def)}</div></div>
+      <div class="rt"><span class="price">${it.price}</span>
+      <button class="btn sm ${afford&&!owned?'':'off'}" onclick="buyItem('${k}')">买</button></div>
+    </div>`;
+  });
+  Object.keys(GONGFA).filter(k=>k!=="changchun").forEach(k=>{
+    const g = GONGFA[k];
+    const afford = S.money >= g.price;
+    const owned = S.known.includes(k);
+    html += `<div class="row">
+      <div><div class="nm">${g.n} ${owned?'<span class="tag eq">已习</span>':''}</div><div class="ds">${g.d} · 修速 ×${g.mul}</div></div>
+      <div class="rt"><span class="price">${g.price}</span>
+      <button class="btn sm ${afford&&!owned?'':'off'}" onclick="buyGongfa('${k}')">买</button></div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card"><h3>收购</h3>`;
+  if (!sellables.length) html += `<p class="hint">没有可卖的材料。</p>`;
+  else sellables.forEach(k=>{
+    html += `<div class="row">
+      <div><div class="nm">${ITEMS[k].n} <span class="tag">×${S.bag[k]}</span></div></div>
+      <div class="rt"><span class="price">${ITEMS[k].price}</span>
+      <button class="btn sm" onclick="sellItem('${k}',1)">卖 1</button>
+      <button class="btn sm" onclick="sellItem('${k}',999)">全卖</button></div>
+    </div>`;
+  });
+  html += `</div>`;
+  $("tab-shop").innerHTML = html;
+}
+
+function renderBook(){
+  const logs = S.log.slice().reverse();
+  let html = `<div class="card"><h3>存档</h3>
+    <p class="hint">存档保存在本机浏览器，换设备或清缓存即丢失。建议偶尔导出一次。</p>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn sm" style="flex:1" onclick="exportSave()">导出</button>
+      <button class="btn sm" style="flex:1" onclick="importSave()">导入</button>
+      <button class="btn sm" style="flex:1" onclick="wipeSave()">重开</button>
+    </div></div>`;
+  html += `<div class="card"><h3>见闻</h3>`;
+  if (!logs.length) html += `<p class="hint">还没什么可记的。</p>`;
+  else html += logs.slice(0,80).map(e=>`<p style="margin:0 0 8px;font-size:12.5px;line-height:1.75;color:${e.c==='bad'?'var(--red)':e.c==='good'?'var(--green)':e.c==='warn'?'var(--amber)':'var(--ink2)'}">${escapeHtml(e.t)}</p>`).join("");
+  html += `</div>`;
+  $("tab-book").innerHTML = html;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* -------------------- 交互函数（全局） -------------------- */
+window.useItem = function(k){
+  const it = ITEMS[k];
+  if (!it.use || !S.bag[k]) return;
+  const msg = it.use(S);
+  removeItem(k,1);
+  pushLog(msg, "good");
+  save(); renderHeader(); renderBag();
+};
+
+window.sellItem = function(k, n){
+  if (!S.bag[k]) return;
+  const cnt = Math.min(S.bag[k], n);
+  const gain = ITEMS[k].price * cnt;
+  removeItem(k, cnt);
+  S.money += gain;
+  pushLog("卖出 "+ITEMS[k].n+" ×"+cnt+"，得灵石 "+gain+"。", "sys");
+  save(); renderHeader();
+  if (currentTab==="shop") renderShop(); else renderBag();
+};
+
+window.buyItem = function(k){
+  const it = ITEMS[k];
+  if (S.money < it.price) return;
+  S.money -= it.price;
+  addItem(k,1);
+  pushLog("买下 "+it.n+"，花去灵石 "+it.price+"。", "sys");
+  save(); renderHeader(); renderShop();
+};
+
+window.buyGongfa = function(k){
+  const g = GONGFA[k];
+  if (S.money < g.price || S.known.includes(k)) return;
+  S.money -= g.price;
+  S.known.push(k);
+  pushLog("你得了《"+g.n+"》的传承。", "good");
+  save(); renderHeader(); renderShop();
+};
+
+window.equipItem = function(k){
+  const it = ITEMS[k];
+  if (!S.bag[k]) return;
+  if (S.equip[it.slot] === k) S.equip[it.slot] = null;
+  else S.equip[it.slot] = k;
+  renderHeader(); renderBag(); save();
+};
+
+window.switchGongfa = function(k){
+  if (!S.known.includes(k)) return;
+  S.gongfa = k;
+  pushLog("你改修《"+GONGFA[k].n+"》。", "sys");
+  renderChar(); save();
+};
+
+window.exportSave = function(){
+  const str = btoa(encodeURIComponent(JSON.stringify(S)));
+  const ta = document.createElement("textarea");
+  ta.value = str;
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand("copy"); }catch(e){}
+  document.body.removeChild(ta);
+  openModal("存档已导出", "一串存档码已复制到剪贴板。\n\n请粘贴到备忘录或聊天窗口里存好。\n换设备时用「导入」贴回来即可。\n\n长度："+str.length+" 字符", [{t:"好", f:null}]);
+};
+
+window.importSave = function(){
+  const str = prompt("粘贴存档码：");
+  if (!str) return;
+  try{
+    const d = JSON.parse(decodeURIComponent(atob(str.trim())));
+    if (!d || d.v !== 1) throw new Error("bad");
+    localStorage.setItem(SAVE_KEY, JSON.stringify(d));
+    location.reload();
+  }catch(e){
+    openModal("读取失败", "存档码有误，或不是本游戏的存档。", [{t:"知道了", f:null}]);
+  }
+};
+
+window.wipeSave = function(){
+  openModal("重开一世", "当前进度将被彻底抹去。\n真的要走这一步？", [
+    {t:"抹去，重来", f:()=>{ localStorage.removeItem(SAVE_KEY); location.reload(); }},
+    {t:"算了", f:null}
+  ]);
+};
+
+/* -------------------- 导航 -------------------- */
+document.querySelectorAll("#nav div").forEach(el=>{
+  el.onclick = ()=>{
+    document.querySelectorAll("#nav div").forEach(x=>x.classList.remove("on"));
+    el.classList.add("on");
+    currentTab = el.dataset.go;
+    document.querySelectorAll("[data-tab]").forEach(x=>{
+      const tabs = x.dataset.tab.split(" ");
+      x.classList.toggle("on", tabs.includes(currentTab));
+    });
+    $("acts").style.display = currentTab==="cult" ? "flex" : "none";
+    renderTab();
+  };
+});
+
+$("a-train").onclick = actTrain;
+$("a-explore").onclick = actExplore;
+$("a-break").onclick = actBreak;
+$("mask").onclick = ()=>{ if (modalOpen) closeModal(); };
+
+/* -------------------- 开局 -------------------- */
+let rolledRoot = null;
+let rerollLeft = 3;
+
+function rollRoot(){
+  const total = ROOTS.reduce((a,r)=>a+r.w,0);
+  let r = Math.random()*total;
+  for (const root of ROOTS){
+    r -= root.w;
+    if (r <= 0) return root;
+  }
+  return ROOTS[0];
+}
+
+function renderRootPick(){
+  const box = $("s-root");
+  box.innerHTML = `<div class="rn">${rolledRoot.n}</div>
+    <div class="rd">${rolledRoot.d}</div>
+    <div class="rb">修行速度 ×${rolledRoot.mul.toFixed(2)}</div>`;
+  $("s-reroll").textContent = rerollLeft > 0 ? `换个灵根（剩 ${rerollLeft} 次）` : "灵根天定，改不了了";
+  $("s-reroll").classList.toggle("off", rerollLeft <= 0);
+}
+
+function showStart(){
+  rolledRoot = rollRoot();
+  renderRootPick();
+  $("s-reroll").onclick = ()=>{
+    if (rerollLeft <= 0) return;
+    rerollLeft--;
+    rolledRoot = rollRoot();
+    renderRootPick();
+  };
+  $("s-go").onclick = ()=>{
+    const nm = ($("s-name").value || "").trim() || "无名";
+    S = freshState(nm.slice(0,8), rolledRoot.n);
+    S.log = [];
+    S.hp = stats().hpMax;
+    pushLog("你叫"+S.name+"，生于青石村，父母早亡。", "sys");
+    pushLog("十六岁这年，你在后山捡到一本残破的功法。", "sys");
+    pushLog("没人教你，你就自己照着练。", "sys");
+    pushLog("这一练，就是一辈子。", "sys");
+    save();
+    $("start").classList.add("off");
+    renderHeader();
+    renderLog();
+    startTick();
+  };
+}
+
+/* -------------------- 启动 -------------------- */
+(function boot(){
+  const saved = load();
+  if (saved && !saved.dead){
+    S = saved;
+    $("start").classList.add("off");
+    renderHeader();
+    renderLog();
+    settleOffline();
+    startTick();
+    pushLog("（存档已读取）", "dim");
+  } else {
+    showStart();
+  }
+  window.addEventListener("beforeunload", save);
+  document.addEventListener("visibilitychange", ()=>{
+    if (document.hidden) save();
+    else if (S && !S.dead){ settleOffline(); renderHeader(); }
+  });
+  setInterval(save, 5000);
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
