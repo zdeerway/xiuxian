@@ -210,7 +210,8 @@ body{
     <button class="startbtn ghost" id="s-reroll">换个灵根（剩 3 次）</button>
     <div class="foot">
       修为随时间自然累积 · 每 1.5 秒一日<br>
-      存档保存在本机浏览器 · 换设备即新档
+      存档保存在本机浏览器 · 换设备即新档<br>
+      <span style="opacity:.6">v2 · 品质与经济修订</span>
     </div>
   </div>
 </div>
@@ -261,19 +262,23 @@ const ROOTS = [
 
 /* -------------------- 物品 -------------------- */
 const ITEMS = {
-  huiqi:    {n:"回气丹", t:"pill", price:10,  d:"回复四成气血", use:s=>{const st=stats(); const v=Math.round(st.hpMax*0.4); const real=Math.min(v, st.hpMax-s.hp); s.hp+=real; return "服下回气丹，气血回复 "+real+"。";}},
-  juqi:     {n:"聚气丹", t:"pill", price:24,  d:"立得约五十日修为", use:s=>{const g=Math.round(gainPerDay()*50); s.exp=Math.min(expNeed(), s.exp+g); return "药力化开，修为 +"+g+"。";}},
-  pozhang:  {n:"破障丹", t:"pill", price:90,  d:"下次突破成功率 +25%", use:s=>{s.buff.pozhang=true; return "破障丹已置于案前，下次突破成功率大增。";}},
+  huiqi:    {n:"回气丹", t:"pill", price:10,  d:"回复气血", use:(s,q)=>{const st=stats(); const v=Math.round(st.hpMax*(0.4+(q||0)*0.12)); const real=Math.min(v, st.hpMax-s.hp); s.hp+=real; return "服下回气丹，气血回复 "+real+"。";}},
+  juqi:     {n:"聚气丹", t:"pill", price:24,  d:"立得数十日修为", use:(s,q)=>{const g=Math.round(gainPerDay()*(50+(q||0)*25)); s.exp=Math.min(expNeed(), s.exp+g); return "药力化开，修为 +"+g+"。";}},
+  pozhang:  {n:"破障丹", t:"pill", price:90,  d:"下次突破成功率 +25%（品相更佳者加更多）", use:(s,q)=>{s.buff.pozhang = 1 + (q||0)*0.2; return "破障丹已置于案前，下次突破成功率大增。";}},
   huiling:  {n:"回灵散", t:"pill", price:45,  d:"受伤后立刻恢复，免除卧床", use:s=>{s.hurt=0; return "药粉入喉，伤痛尽去。";}},
   zhujidan: {n:"筑基丹", t:"pill", price:300, d:"筑基必备之物", use:null},
   jiedandan:{n:"结金丹", t:"pill", price:2400,d:"结丹必备之物", use:null},
   yuanyingdan:{n:"凝婴丹",t:"pill",price:12000,d:"结婴必备之物", use:null},
   huashendan:{n:"化神丹",t:"pill",price:60000,d:"化神必备之物", use:null},
 
-  lingcao:  {n:"百年灵草", t:"mat", price:6,  d:"炼丹主料，坊市常收"},
-  yaodan:   {n:"妖兽内丹", t:"mat", price:18, d:"低阶妖丹，灵气驳杂"},
-  shoupi:   {n:"妖兽皮毛", t:"mat", price:5,  d:"粗制护具的材料"},
-  lingshi_ore:{n:"灵石矿簇",t:"mat", price:14, d:"可换取灵石"},
+  lingcao:  {n:"百年灵草", t:"mat", price:9,  d:"炼丹主料，坊市常收"},
+  yaodan:   {n:"妖兽内丹", t:"mat", price:26, d:"低阶妖丹，灵气驳杂"},
+  shoupi:   {n:"妖兽皮毛", t:"mat", price:7,  d:"粗制护具的材料"},
+  lingshi_ore:{n:"灵石矿簇",t:"mat", price:22, d:"可换取灵石"},
+  xueteng:  {n:"铁骨血藤", t:"mat", price:14, d:"藤蔓如铁，画符炼器皆可用"},
+  yaogu:    {n:"妖兽残骨", t:"mat", price:11, d:"磨粉入药，或炼成骨器"},
+  fuzhi:    {n:"空青符纸", t:"mat", price:8,  d:"以灵木浆抄成，画符之基"},
+  lingyu:   {n:"无瑕灵玉", t:"mat", price:75, d:"灵气自凝成玉，价值不菲"},
 
   tie_jian: {n:"铁剑",   t:"eq", slot:"weapon", atk:4,  price:30,  d:"村口铁匠打的，能杀人"},
   qingfeng: {n:"青锋剑", t:"eq", slot:"weapon", atk:14, price:220, d:"剑身泛青，寒光如水"},
@@ -285,6 +290,51 @@ const ITEMS = {
   jiajia:   {n:"玄铁软甲",t:"eq", slot:"armor", def:40, price:1800,d:"贴身而着，刀枪难入"},
   lingdun:  {n:"灵光护盾",t:"eq", slot:"armor", def:150,price:11000,d:"灵气凝盾，御敌于外"}
 };
+
+/* -------------------- 品质 -------------------- */
+const RARITY = [
+  {n:"凡品", mul:1.0, c:"#8A8578"},
+  {n:"良品", mul:1.7, c:"#3B6D11"},
+  {n:"上品", mul:2.8, c:"#185FA5"},
+  {n:"极品", mul:4.6, c:"#7F77DD"},
+  {n:"灵品", mul:8.0, c:"#993C1D"}
+];
+const QDROP = {
+  1:[.82,.16,.02,0,0],
+  2:[.70,.24,.06,0,0],
+  3:[.58,.29,.11,.02,0],
+  4:[.46,.32,.17,.05,0],
+  5:[.34,.33,.22,.09,.02],
+  6:[.22,.30,.28,.15,.05],
+  7:[.14,.24,.30,.22,.10]
+};
+function rollQ(lv){
+  const t = QDROP[lv] || QDROP[1];
+  let r = Math.random();
+  for (let i=0;i<t.length;i++){ r -= t[i]; if (r <= 0) return i; }
+  return 0;
+}
+const QKEY = (id,q) => id + "@" + (q|0);
+function QID(k){ const i = k.indexOf("@"); return i < 0 ? k : k.slice(0,i); }
+function QQ(k){ const i = k.indexOf("@"); return i < 0 ? 0 : (parseInt(k.slice(i+1),10)||0); }
+function itemBase(k){ return ITEMS[QID(k)] || null; }
+function itemName(k){
+  const it = itemBase(k); if (!it) return "？";
+  const q = QQ(k);
+  return q > 0 ? it.n + "·" + RARITY[q].n : it.n;
+}
+function sellPrice(k){
+  const it = itemBase(k); if (!it) return 0;
+  return Math.round(it.price * RARITY[QQ(k)].mul);
+}
+function eqAtk(k){
+  const it = itemBase(k);
+  return (it && it.atk) ? Math.round(it.atk * (1 + QQ(k)*0.45)) : 0;
+}
+function eqDef(k){
+  const it = itemBase(k);
+  return (it && it.def) ? Math.round(it.def * (1 + QQ(k)*0.45)) : 0;
+}
 
 /* -------------------- 功法 -------------------- */
 const GONGFA = {
@@ -344,7 +394,8 @@ function freshState(name, rootName){
     hp:40, hurt:0,
     money:12, rep:0,
     insight: RI(6,12), physique: RI(6,12),
-    bag:{ huiqi:2, lingcao:1 },
+    bag:{ "huiqi@0":2, "lingcao@0":1 },
+    quests:[],
     equip:{ weapon:null, armor:null },
     gongfa:"changchun",
     known:["changchun"],
@@ -364,8 +415,8 @@ function stats(){
   const mul = r.mul;
   const atk = Math.round(4 * mul * (1 + 0.18*(li-1)) * (1 + (S.physique-9)*0.02));
   const hpMax = Math.round(40 * mul * (1 + 0.22*(li-1)) * (1 + (S.physique-9)*0.015));
-  const w = S.equip.weapon ? ITEMS[S.equip.weapon].atk : 0;
-  const a = S.equip.armor ? ITEMS[S.equip.armor].def : 0;
+  const w = S.equip.weapon ? eqAtk(S.equip.weapon) : 0;
+  const a = S.equip.armor ? eqDef(S.equip.armor) : 0;
   const atkAll = atk + w;
   const defAll = Math.round(atkAll * 0.35) + a;
   return { atk: atkAll, baseAtk: atk, def: defAll, hpMax, mul };
@@ -490,7 +541,7 @@ function breakRate(){
   let base = isBig ? 0.52 : 0.88;
   base += S.insight * 0.004;
   base += (S.rootMul - 1) * 0.05;
-  if (S.buff.pozhang) base += 0.25;
+  if (S.buff.pozhang) base += 0.25 * (typeof S.buff.pozhang === "number" ? S.buff.pozhang : 1);
   if (S.flags.bottleneck) base -= 0.1;
   return clamp(base, 0.08, 0.98);
 }
@@ -504,7 +555,7 @@ function canBreak(){
   if (isBig){
     const next = REALMS[S.realm+1];
     if (!next) return {ok:true};
-    if (next.need && !(S.bag[next.need] > 0))
+    if (next.need && countOf(next.need) <= 0)
       return {ok:false, why:"需「"+ITEMS[next.need].n+"」方可冲击"+next.n};
   }
   return {ok:true};
@@ -522,8 +573,7 @@ function doBreak(){
   if (isBig){
     const next = REALMS[S.realm+1];
     if (next && next.need){
-      S.bag[next.need]--;
-      if (S.bag[next.need] <= 0) delete S.bag[next.need];
+      takeAny(next.need, 1);
     }
   }
   S.buff.pozhang = false;
@@ -605,20 +655,24 @@ function battle(mob, opt){
 
   if (win){
     S.hp = Math.max(1, Math.round(myHp));
-    const money = Math.round(mob.lv * RI(4,9) * R(0.9,1.3));
+    const money = Math.round(mob.lv * RI(12,22) * R(0.9,1.25));
     const exp = Math.round(gainPerDay() * RI(6,14) * (1 + mob.lv*0.15));
     S.money += money;
     S.exp = Math.min(expNeed(), S.exp + exp);
     let extra = "";
-    if (Math.random() < 0.42){
+    const dropN = Math.random() < 0.5 ? (Math.random() < 0.25 ? 2 : 1) : 0;
+    if (dropN > 0){
       const drops = {
-        1:["shoupi","lingcao"], 2:["shoupi","lingcao","yaodan"],
-        3:["lingcao","yaodan"], 4:["yaodan","lingshi_ore"],
-        5:["yaodan","lingshi_ore"], 6:["yaodan","lingshi_ore"], 7:["yaodan","lingshi_ore"]
+        1:["shoupi","lingcao","fuzhi"], 2:["shoupi","lingcao","yaodan","xueteng"],
+        3:["lingcao","yaodan","yaogu","xueteng"], 4:["yaodan","lingshi_ore","yaogu","xueteng"],
+        5:["yaodan","lingshi_ore","lingyu"], 6:["yaodan","lingshi_ore","lingyu"],
+        7:["yaodan","lingshi_ore","lingyu"]
       };
       const d = pick(drops[mob.lv] || ["lingcao"]);
-      addItem(d, 1);
-      extra = "\n拾得 "+ITEMS[d].n+" ×1。";
+      const q = rollQ(mob.lv);
+      const k = addItem(d, dropN, q);
+      extra = "\n拾得 "+itemName(k)+" ×"+dropN+"。";
+      if (q >= 3) extra += "（好东西，坊市肯出高价）";
     }
     return {
       win:true,
@@ -639,14 +693,35 @@ function battle(mob, opt){
 }
 
 /* -------------------- 物品 -------------------- */
-function addItem(id, n){
-  S.bag[id] = (S.bag[id]||0) + n;
+function addItem(id, n, q){
+  q = q || 0;
+  const k = QKEY(id, q);
+  S.bag[k] = (S.bag[k]||0) + n;
+  return k;
 }
-function removeItem(id, n){
-  if (!S.bag[id]) return false;
-  S.bag[id] -= n;
-  if (S.bag[id] <= 0) delete S.bag[id];
+function removeItem(key, n){
+  if (!S.bag[key]) return false;
+  S.bag[key] -= n;
+  if (S.bag[key] <= 0) delete S.bag[key];
   return true;
+}
+// 按物品 id 合计所有品质的数量
+function countOf(id){
+  let t = 0;
+  for (const k in S.bag){ if (QID(k) === id) t += S.bag[k]; }
+  return t;
+}
+// 跨品质取出 n 个（先取低品质）
+function takeAny(id, n){
+  const keys = Object.keys(S.bag).filter(k=>QID(k)===id).sort((a,b)=>QQ(a)-QQ(b));
+  let left = n;
+  for (const k of keys){
+    if (left <= 0) break;
+    const use = Math.min(S.bag[k], left);
+    removeItem(k, use);
+    left -= use;
+  }
+  return left === 0;
 }
 
 /* -------------------- 事件系统 -------------------- */
@@ -655,42 +730,416 @@ function ev(title, desc, choices){
 }
 
 const EVENTS = [
-  // 1 采药人
-  {w:8, gen:()=> ev("山道采药人",
+  // ---------- 小机遇 ----------
+  {w:9, gen:()=> ev("山道采药人",
     "一个背着竹篓的老汉坐在石头上啃干粮，篓里露出几株带露的灵草。\n他见你走近，警惕地把篓往身后挪了挪。",
     [
-      {t:"出钱买他的灵草", f:()=>{
-        if (S.money < 30) return "你摸了摸口袋，掏不出三十灵石。老汉摇摇头，继续啃饼。";
-        S.money -= 30; addItem("lingcao", RI(2,4));
-        return "老汉笑了，从篓里摸出几株灵草递给你。\n「后生，这山里头最近不太平。」\n\n得百年灵草 ×"+(S.bag.lingcao>0?"若干":"几株")+"。";
+      {t:"出钱收下他的灵草", f:()=>{
+        const cost = 40;
+        if (S.money < cost) return "你摸了摸口袋，连四十灵石都掏不出。老汉摇摇头，继续啃饼。";
+        S.money -= cost;
+        const q = rollQ(1);
+        const k = addItem("lingcao", RI(3,6), q);
+        return "老汉笑了，把篓里的灵草倒了大半给你。\n「后生，这山里头最近不太平。」\n\n得 "+itemName(k)+" ×"+S.bag[k]+"。";
       }},
       {t:"问他山里的路", f:()=>{
         S.insight = Math.min(30, S.insight+1);
-        return "老汉絮絮讲了半日：哪条道有狼，哪处泉眼的水不能喝。\n你听出些门道，悟性 +1。";
+        const m = RI(20,60); S.money += m;
+        return "老汉絮絮讲了半日：哪条道有狼，哪处泉眼的水不能喝。\n临走还塞给你一小袋灵石，「拿着，别嫌少。」\n悟性 +1，灵石 +"+m+"。";
       }},
       {t:"不多话，走开", f:()=> "你绕过老汉继续赶路。山风把他的咳嗽声吹得很远。"}
     ])},
-  // 2 破败洞府
-  {w:7, gen:()=> ev("破败洞府",
-    "藤蔓后头露出半截石门，门缝里透着陈年的阴气。\n门楣上刻着三个字，被苔藓盖住了一半。",
+
+  {w:8, gen:()=> ev("遗落的储物袋",
+    "路边的草丛里压着半只布袋子，边角绣着云纹，是个修士的储物袋。\n看落脚处，主人应当走得匆忙。",
     [
-      {t:"推开石门进去", f:()=>{
-        const r = Math.random();
-        if (r < 0.42){
-          const m = RI(40,120); S.money += m;
-          return "洞内只有一具盘坐的枯骨，膝上搁着个储物袋。\n你取了袋子，里头有灵石 "+m+"。\n枯骨无碑无名，你替他掩了土。";
-        } else if (r < 0.7){
-          S.exp = Math.min(expNeed(), S.exp + gainPerDay()*RI(30,60));
-          return "石壁上刻着密密麻麻的字，是一篇残缺功法。\n你读了三日，虽不全懂，修为却涨了一截。";
-        } else {
-          const mob = makeMob(Math.min(7, (REGIONS[S.region].lv)+1));
-          const res = battle(mob, {maxRounds:20});
-          return "洞中并非空无一人。\n\n"+res.text;
-        }
+      {t:"打开看看", f:()=>{
+        const m = RI(80,220); S.money += m;
+        const q = rollQ(2);
+        const k = addItem(pick(["yaodan","lingcao","yaogu"]), RI(1,3), q);
+        return "袋里没有身份牌，也没有尸体。\n你倒出灵石 "+m+"，还有几样杂物。\n得 "+itemName(k)+"。";
       }},
-      {t:"绕开，不惹是非", f:()=> "你记下这处地方，转身走了。有些门推开就关不上了。"}
+      {t:"挂在路边树上等人来寻", f:()=>{
+        S.rep += 2;
+        const m = RI(60,160); S.money += m;
+        return "你把它挂在最显眼的树杈上，压了块石头。\n三日后，一个中年修士寻来，非要塞给你一袋灵石。\n声望 +2，灵石 +"+m+"。";
+      }}
     ])},
-  // 3 妖兽拦路
+
+  {w:8, gen:()=> ev("溪边鱼腹",
+    "溪水浅得能看见石头。一条半死不活的大鱼卡在石缝里，肚皮鼓得反常。",
+    [
+      {t:"剖开鱼腹", f:()=>{
+        if (Math.random() < 0.72){
+          const q = rollQ(2);
+          const k = addItem("lingyu", 1, q);
+          return "鱼腹里滚出一颗指节大的珠子，通体透亮。\n是灵玉。\n得 "+itemName(k)+" ×1。";
+        }
+        const m = RI(30,80); S.money += m;
+        return "只有一堆没消化的石子，倒是引了两个路过的人来买鱼。\n灵石 +"+m+"。";
+      }},
+      {t:"放它回水里", f:()=>{
+        S.insight = Math.min(30, S.insight+1);
+        return "你把鱼推回深水。它在水里翻了个身，走了。\n说不上为什么，你心里静了些。悟性 +1。";
+      }}
+    ])},
+
+  {w:7, gen:()=> ev("树洞",
+    "一棵枯死的老槐树，树干上有个拳头大的洞，洞口被松脂封过。",
+    [
+      {t:"伸手掏", f:()=>{
+        const m = RI(60,180); S.money += m;
+        const q = rollQ(2);
+        const k = addItem(pick(["shoupi","fuzhi","xueteng"]), RI(2,4), q);
+        return "松脂下面是个油纸包，包着灵石和几样零碎。\n灵石 +"+m+"，另有 "+itemName(k)+"。";
+      }},
+      {t:"劈开树干", f:()=>{
+        const m = RI(100,260); S.money += m;
+        return "树心早空，里头藏着一窝松鼠的存粮，混着不少亮晶晶的东西。\n你挑走了能换钱的。灵石 +"+m+"。";
+      }}
+    ])},
+
+  {w:7, gen:()=> ev("老猎户的皮货",
+    "一个老猎户蹲在路边，摊子上摊着十几张兽皮，成色看着不错。\n「小兄弟，收皮子不？便宜给你。」",
+    [
+      {t:"全收了（120 灵石）", f:()=>{
+        if (S.money < 120) return "你掏不出这个数。老猎户叹了口气，把皮子收了回去。";
+        S.money -= 120;
+        const q = rollQ(3);
+        const k = addItem("shoupi", RI(6,10), q);
+        return "你就地转手卖给坊市，赚了一笔。\n得 "+itemName(k)+" ×"+S.bag[k]+"。";
+      }},
+      {t:"只挑两张最好的", f:()=>{
+        if (S.money < 30) return "你连三十灵石都没有。他摆摆手，「算了，拿一张去。」";
+        S.money -= 30;
+        const q = rollQ(4);
+        const k = addItem("shoupi", 2, q);
+        return "你挑了压在底下的两张，皮质厚实，毛色油亮。\n得 "+itemName(k)+" ×2。";
+      }},
+      {t:"不感兴趣", f:()=> "你摇摇头。他也不恼，继续蹲着等下一个客人。"}
+    ])},
+
+  {t:"送信的活计", w:6, gen:()=> ev("送信的活计",
+    "坊市口贴着一张告示：送一封书信去黑风岭，酬灵石八十。\n落款是个没听过的名字。",
+    [
+      {t:"接下这趟差事", f:()=>{
+        const d = RI(4,10); advanceDays(d, true);
+        if (Math.random() < 0.75){
+          const m = RI(120,260); S.money += m;
+          return "你走了 "+d+" 日，把信送到。收信人验过火漆，多给了你一些。\n灵石 +"+m+"。";
+        }
+        const mob = makeMob(Math.max(1, REGIONS[S.region].lv));
+        return "半路上有人拦你要信。\n\n"+battle(mob).text;
+      }},
+      {t:"不接", f:()=> "你看了两眼就走开了。这年头，送信的往往比信先死。"}
+    ])},
+
+  {w:7, gen:()=> ev("灵气结晶",
+    "山壁上凝着一层白霜似的东西，伸手一摸，指尖发麻。\n是灵气凝出的结晶。",
+    [
+      {t:"小心刮下来", f:()=>{
+        const g = Math.round(gainPerDay()*RI(30,70));
+        S.exp = Math.min(expNeed(), S.exp+g);
+        const q = rollQ(2);
+        const k = addItem("lingshi_ore", RI(2,4), q);
+        return "你刮了大半日，掌心都被冻得发白。\n修为 +"+fmt(g)+"，得 "+itemName(k)+"。";
+      }},
+      {t:"就地打坐，把灵气吸干", f:()=>{
+        const g = Math.round(gainPerDay()*RI(70,130));
+        S.exp = Math.min(expNeed(), S.exp+g);
+        return "你在结晶前坐了两天两夜，白霜一点点化尽。\n修为 +"+fmt(g)+"。";
+      }}
+    ])},
+
+  // ---------- 中机遇 ----------
+  {w:7, gen:()=> ev("帮商队护镖",
+    "一支三辆车的商队停在岔路口。管事的是个精瘦中年人，见你佩剑，眼睛一亮。\n「小兄弟，送我们过黑风岭，二百灵石。」",
+    [
+      {t:"答应下来", f:()=>{
+        const d = RI(8,18); advanceDays(d, true);
+        if (Math.random() < 0.62){
+          const m = RI(260,480); S.money += m;
+          const q = rollQ(3);
+          const k = addItem("lingcao", RI(4,7), q);
+          return "一路平安，只遇上两拨不成气候的野物。\n管事的多给了一份谢礼。\n灵石 +"+m+"，另得 "+itemName(k)+"。";
+        }
+        const mob = makeMob(Math.min(7, REGIONS[S.region].lv+1));
+        mob.n = "劫道的散修头目";
+        const r = battle(mob);
+        if (r.win){
+          const m = RI(300,560); S.money += m;
+          return "半路果然有埋伏。\n\n"+r.text+"\n\n管事的多付了一倍酬劳。灵石 +"+m+"。";
+        }
+        return "半路果然有埋伏。\n\n"+r.text+"\n\n商队散了，你什么也没拿到。";
+      }},
+      {t:"要价三百", f:()=>{
+        if (Math.random() < 0.5){
+          const d = RI(8,18); advanceDays(d, true);
+          const m = RI(320,560); S.money += m;
+          return "管事咬了咬牙，应了。\n走了 "+d+" 日，还算顺利。灵石 +"+m+"。";
+        }
+        return "管事摇头，另找了别人。\n你站在原地，看着车队走远。";
+      }},
+      {t:"不惹麻烦", f:()=> "你侧身让开路。商队过去时，车辙压得很深。"}
+    ])},
+
+  {w:6, gen:()=> ev("地下赌坊",
+    "镇子后巷有扇没有招牌的门，推门进去，烟气扑脸。\n一群人围着一张桌子摇骰子。",
+    [
+      {t:"押一百灵石", f:()=>{
+        if (S.money < 100) return "你把口袋翻了个底朝天，凑不够一百。庄家看都懒得看你。";
+        S.money -= 100;
+        if (Math.random() < 0.42){
+          const m = RI(220,420); S.money += m;
+          return "骰盅揭开，三颗六点。\n你压着心跳收了钱。灵石 +"+m+"。";
+        }
+        return "骰盅揭开，你押的那门空着。\n一百灵石没了。";
+      }},
+      {t:"押五百灵石", f:()=>{
+        if (S.money < 500) return "五百灵石不是小数目，你凑不出来。";
+        S.money -= 500;
+        if (Math.random() < 0.38){
+          const m = RI(1200,2200); S.money += m;
+          return "骰盅揭开的一瞬，整个屋子都静了。\n你赢了。灵石 +"+m+"。";
+        }
+        return "你盯着骰子看了很久。\n五百灵石，一枚也没剩下。";
+      }},
+      {t:"站在边上看", f:()=>{
+        const m = RI(10,40); S.money += m;
+        return "你看了半宿，替一个输红了眼的散修指了两把，他分了你些零头。\n灵石 +"+m+"。";
+      }}
+    ])},
+
+  {w:6, gen:()=> ev("赌石摊",
+    "摊子上摆着几十块灰扑扑的原石，每块标价一百二十灵石。\n摊主眯着眼：「开出灵玉，就是你的。」",
+    [
+      {t:"挑一块（120 灵石）", f:()=>{
+        if (S.money < 120) return "你摸了摸口袋，退了两步。";
+        S.money -= 120;
+        const r = Math.random();
+        if (r < 0.16){
+          const k = addItem("lingyu", 2, 4);
+          return "石头剖开，里头是两团温润的白光。\n摊主的脸僵住了。\n得 "+itemName(k)+" ×2。";
+        }
+        if (r < 0.45){
+          const k = addItem("lingyu", 1, RI(1,2));
+          return "石皮裂开，露出一小片玉色。\n算是不亏。得 "+itemName(k)+"。";
+        }
+        return "剖到底，只有石头。\n摊主笑了笑，把碎块扫到一边。";
+      }},
+      {t:"连开三块（360 灵石）", f:()=>{
+        if (S.money < 360) return "你只够买一块的。摊主不咸不淡地说：「那就一块。」";
+        S.money -= 360;
+        let got = 0, txt = "";
+        for (let i=0;i<3;i++){
+          const r = Math.random();
+          if (r < 0.16){ const k = addItem("lingyu", 2, 4); got += 2; txt += "第二块出了双玉。\n"; }
+          else if (r < 0.45){ const k = addItem("lingyu", 1, RI(1,2)); got += 1; txt += "有一块出了玉。\n"; }
+        }
+        if (got === 0) return "三块全是废石。\n你盯着地上的石屑，半晌没说话。";
+        return txt + "\n共得 无瑕灵玉 ×"+got+"。";
+      }},
+      {t:"看看就走", f:()=> "你蹲下看了会儿石皮上的纹路，还是没下手。"}
+    ])},
+
+  {w:6, gen:()=> ev("落难的商队",
+    "三辆翻倒的车横在道上，货物散了一地，人却不见踪影。\n车辙是新的，血也是新的。",
+    [
+      {t:"捡了东西就走", f:()=>{
+        const m = RI(150,340); S.money += m;
+        const q = rollQ(3);
+        const k = addItem(pick(["lingcao","yaodan","fuzhi"]), RI(2,5), q);
+        S.rep -= 1;
+        return "你把能带走的都塞进储物袋。\n没有尸体，也没有追兵。\n灵石 +"+m+"，另得 "+itemName(k)+"。";
+      }},
+      {t:"找找有没有活人", f:()=>{
+        if (Math.random() < 0.6){
+          const m = RI(280,560); S.money += m; S.rep += 3;
+          const q = rollQ(3);
+          const k = addItem("lingcao", RI(3,6), q);
+          return "车底下压着个奄奄一息的伙计。你把他拖了出来。\n他缓过气，把货主留的谢银全给了你。\n灵石 +"+m+"，声望 +3，另得 "+itemName(k)+"。";
+        }
+        return "都是死人。你把他们的眼睛合上，在路边刨了个坑。";
+      }},
+      {t:"绕道走", f:()=> "你从坡上绕过去。风里有股味道，你不想知道是什么。"}
+    ])},
+
+  {w:6, gen:()=> ev("山神讨封",
+    "一株老树下立着块无字碑，碑前供着几个发黑的馒头。\n你路过时，风忽然停了。\n有个声音贴着耳朵问：「你看我，像什么？」",
+    [
+      {t:"「像个仙风道骨的老者。」", f:()=>{
+        const k = addItem("lingyu", 1, 4);
+        S.insight = Math.min(30, S.insight+1);
+        return "风又起了。碑前的馒头不见了，取而代之的是块温润的玉。\n「你倒会说话。」\n得 "+itemName(k)+"，悟性 +1。";
+      }},
+      {t:"「像块石头。」", f:()=>{
+        if (Math.random() < 0.5){
+          const m = RI(200,420); S.money += m;
+          return "那声音沉默了很久，然后笑了。\n「实话。实话难得。」\n碑后滚出一袋灵石，灵石 +"+m+"。";
+        }
+        const st = stats();
+        S.hp = Math.max(1, Math.round(st.hpMax*0.4));
+        S.hurt = RI(5,12);
+        return "风猛地砸下来，你被掀出十几丈远。\n爬起来时，碑还在那里，馒头还在那里。\n你受了伤。";
+      }},
+      {t:"不说话，快步走开", f:()=> "你没敢回头。走出很远，那股气才散。"}
+    ])},
+
+  {w:6, gen:()=> ev("妖丹贩子",
+    "一个穿着皮袍的胖子在路口支了个摊，牌子上写着「高价收妖丹」。\n「不看品相，有多少收多少。」",
+    [
+      {t:"把手里的妖丹都卖了", f:()=>{
+        const n = countOf("yaodan");
+        if (n <= 0) return "你翻了翻储物袋，一颗妖丹也没有。他啧了一声。";
+        let total = 0;
+        Object.keys(S.bag).filter(k=>QID(k)==="yaodan").forEach(k=>{
+          total += Math.round(sellPrice(k) * 1.6) * S.bag[k];
+        });
+        takeAny("yaodan", n);
+        S.money += total;
+        return "他连价都没还，直接数了灵石给你。\n卖了 "+n+" 颗，得灵石 "+total+"。";
+      }},
+      {t:"问他收不收别的", f:()=>{
+        const m = RI(80,180); S.money += m;
+        return "他挑挑拣拣收了你些零碎，价钱还算公道。\n灵石 +"+m+"。";
+      }}
+    ])},
+
+  {w:5, gen:()=> ev("陨星",
+    "西边天上一道白光坠下来，落地时地皮都震了一下。\n远处的林子升起一缕青烟。",
+    [
+      {t:"赶过去看看", f:()=>{
+        const d = RI(3,7); advanceDays(d, true);
+        if (Math.random() < 0.55){
+          const q = 3 + (Math.random()<0.3?1:0);
+          const k = addItem("lingyu", RI(1,2), q);
+          const m = RI(200,400); S.money += m;
+          return "坑底躺着一块还烫手的黑石，敲开后里头是玉色的核。\n得 "+itemName(k)+"，另有些烧熔的灵石。灵石 +"+m+"。";
+        }
+        const mob = makeMob(Math.min(7, REGIONS[S.region].lv+1));
+        mob.n = "循味而来的妖兽";
+        return "你赶到时，坑边已经蹲着个东西。\n\n"+battle(mob).text;
+      }},
+      {t:"离远点", f:()=> "你退到山脊后头，看着那片林子在半个时辰里烧成了灰。"}
+    ])},
+
+  {w:5, gen:()=> ev("迷路的孩童",
+    "一个六七岁的孩子蹲在道边哭，衣角撕了个口子。\n问他家在哪，只会指东边。",
+    [
+      {t:"送他回去", f:()=>{
+        const d = RI(2,6); advanceDays(d, true);
+        const m = RI(180,400); S.money += m; S.rep += 2;
+        return "走了 "+d+" 日，才在山坳里找到那户人家。\n他爹是这一带的猎户，非要留你吃饭，塞了一袋灵石。\n灵石 +"+m+"，声望 +2。";
+      }},
+      {t:"给他几块灵石就走", f:()=>{
+        if (S.money < 30) return "你身上没有零钱。孩子还在哭。";
+        S.money -= 30; S.rep += 1;
+        return "他捧着灵石，愣愣地看着你走远。\n声望 +1。";
+      }}
+    ])},
+
+  // ---------- 大机遇 ----------
+  {w:4, gen:()=> ev("灵石矿脉",
+    "山体塌了半边，露出里面一条白花花的矿脉，粗得像人的手臂。\n这种品相，一整条能换一座宅子。",
+    [
+      {t:"能凿多少凿多少", f:()=>{
+        const d = RI(10,25); advanceDays(d, true);
+        const m = RI(400,900); S.money += m;
+        const q = rollQ(4);
+        const k = addItem("lingshi_ore", RI(3,6), q);
+        return "你凿了 "+d+" 日，手掌磨烂了两回，凿下来的矿簇堆成小山。\n灵石 +"+m+"，另得 "+itemName(k)+" ×"+S.bag[k]+"。";
+      }},
+      {t:"只凿一块，快去报官", f:()=>{
+        const m = RI(150,300); S.money += m; S.rep += 1;
+        return "你撬下一块最好的，连夜下山报给了坊市。\n他们给了你一笔赏钱，还记了个名。\n灵石 +"+m+"，声望 +1。";
+      }}
+    ])},
+
+  {w:4, gen:()=> ev("妖兽巢穴",
+    "岩缝深处传来一股腥味，混着骨头碎裂的脆响。\n洞口堆着白骨，还有几件没烂透的衣衫。",
+    [
+      {t:"杀进去", f:()=>{
+        const mob = makeMob(Math.min(7, REGIONS[S.region].lv+1));
+        const r = battle(mob, {maxRounds:24});
+        if (r.win){
+          const m = RI(500,1100); S.money += m;
+          const q = Math.min(4, rollQ(4)+1);
+          const k = addItem(pick(["yaodan","lingyu"]), RI(1,3), q);
+          return r.text + "\n\n巢里有前人留下的东西。\n灵石 +"+m+"，另得 "+itemName(k)+"。";
+        }
+        return r.text;
+      }},
+      {t:"在洞口等着，捡漏", f:()=>{
+        if (Math.random() < 0.5){
+          const m = RI(200,450); S.money += m;
+          return "你在洞口守了两天，里头安静下来。\n进去只捡到些残骸边的零碎。灵石 +"+m+"。";
+        }
+        const st = stats();
+        S.hp = Math.max(1, Math.round(st.hpMax*0.4));
+        S.hurt = RI(6,14);
+        return "里头的东西没死透。\n它扑出来时你只来得及抬手。\n你逃了出来，伤得不轻。";
+      }}
+    ])},
+
+  {w:4, gen:()=> ev("拍卖会",
+    "坊市今日有场大拍。厅里坐满了人，台上摆着一只蒙着红布的木匣。\n「底价八百灵石。」",
+    [
+      {t:"举牌到底", f:()=>{
+        const cost = RI(900,1800);
+        if (S.money < cost) return "你举了两次牌，被人压了下去。\n只能坐在后排看着。";
+        S.money -= cost;
+        const q = 3 + (Math.random()<0.35?1:0);
+        const k = addItem("pozhang", 2, q);
+        return "木匣最终归了你，全场都在看你。\n匣里是两粒品相极好的破障丹。\n花去 "+cost+" 灵石，得 "+itemName(k)+" ×2。";
+      }},
+      {t:"在场外接盘别人的货", f:()=>{
+        const m = RI(150,400); S.money += m;
+        S.insight = Math.min(30, S.insight+1);
+        return "散场后，一个输急了的修士把随身的零碎低价卖给了你。\n你转手就赚了一笔。\n灵石 +"+m+"，悟性 +1。";
+      }},
+      {t:"坐后排看戏", f:()=>{
+        S.insight = Math.min(30, S.insight+1);
+        return "你听了半场，听出谁的货真、谁的货假。\n这比灵石值钱。悟性 +1。";
+      }}
+    ])},
+
+  {w:5, gen:()=> ev("洗劫战场",
+    "两拨人在这里打完了，尸体横七竖八。\n胜的一方已经走了，留下满地没人收的东西。",
+    [
+      {t:"翻找储物袋", f:()=>{
+        const m = RI(300,700); S.money += m;
+        const q = rollQ(4);
+        const k = addItem(pick(["yaodan","lingcao","xueteng","yaogu"]), RI(2,5), q);
+        S.rep -= 2;
+        return "你翻了七具尸体，摸出五只还没被人拿走的储物袋。\n灵石 +"+m+"，另得 "+itemName(k)+"。\n远处有人看见了，你不太在意。";
+      }},
+      {t:"给死人盖点土", f:()=>{
+        S.rep += 3;
+        const m = RI(100,260); S.money += m;
+        return "你把尸体一具具摆正，盖了土。\n最后一具身下压着一袋灵石，像是特意留给谁的。\n灵石 +"+m+"，声望 +3。";
+      }},
+      {t:"快步离开", f:()=> "你绕开尸体。血腥味跟了你一路。"}
+    ])},
+
+  {w:4, gen:()=> ev("破庙避雨",
+    "雨太大，你躲进一座塌了半边的山神庙。\n神像倒了，供桌却擦得干净，上头摆着新鲜的果子。",
+    [
+      {t:"上柱香，坐一夜", f:()=>{
+        const g = Math.round(gainPerDay()*RI(80,160));
+        S.exp = Math.min(expNeed(), S.exp+g);
+        const m = RI(120,300); S.money += m;
+        return "你在神像前坐了一夜，雨声里似有人在念经。\n醒来时供桌上多了袋灵石。\n修为 +"+fmt(g)+"，灵石 +"+m+"。";
+      }},
+      {t:"把供果吃了", f:()=>{
+        const g = Math.round(gainPerDay()*RI(20,50));
+        S.exp = Math.min(expNeed(), S.exp+g);
+        const st = stats(); S.hp = st.hpMax;
+        return "果子很甜，吃完浑身发暖，伤也好了些。\n修为 +"+fmt(g)+"。";
+      }},
+      {t:"庙里不对劲，走", f:()=> "你转身冲进雨里。走出百步回头看，庙门是黑的。"}
+    ])},
+
+  // ---------- 原有：战斗 / 抉择 ----------
   {w:10, gen:()=>{
     const mob = makeMob(REGIONS[S.region].lv);
     return ev("凶兽拦路",
@@ -699,108 +1148,17 @@ const EVENTS = [
         {t:"拔剑迎战", f:()=> battle(mob).text},
         {t:"绕道，多走几日", f:()=>{
           const d = RI(3,8); advanceDays(d, true);
-          return "你退回岔路，绕了 "+d+" 日才回到原处。多费了工夫，但活着。";
+          const m = RI(40,100); S.money += m;
+          return "你退回岔路，绕了 "+d+" 日才回到原处。\n路上顺手采了些草药，卖了 "+m+" 灵石。";
         }},
         {t:"丢下灵石引开它", f:()=>{
-          if (S.money < 20) return "你摸遍全身，掏不出几颗灵石。它显然也看出来了。\n\n"+battle(mob).text;
-          S.money -= 20;
-          return "你把二十灵石抛向远处。它扑了过去，你趁机脱身。";
+          if (S.money < 30) return "你摸遍全身，掏不出几颗灵石。它显然也看出来了。\n\n"+battle(mob).text;
+          S.money -= 30;
+          return "你把三十灵石抛向远处。它扑了过去，你趁机脱身。";
         }}
       ]);
   }},
-  // 4 斗法旁观
-  {w:6, gen:()=> ev("林中斗法",
-    "前方林间剑光乱闪，两个修士正斗得难解难分，地上已躺着一个人。\n没人注意到你。",
-    [
-      {t:"趁乱摸走地上的东西", f:()=>{
-        if (Math.random() < 0.6){
-          const m = RI(30,90); S.money += m; addItem("yaodan",1);
-          return "你贴着草根爬过去，从死人怀里摸出储物袋。\n得灵石 "+m+"、妖兽内丹 ×1。\n身后剑光炸开，你没敢回头。";
-        }
-        const mob = makeMob(REGIONS[S.region].lv+1);
-        return "你刚弯腰，其中一人扭过头来。\n\n"+battle(mob).text;
-      }},
-      {t:"远远绕开", f:()=> "你压低身形，从坡后绕了过去。修士之间的事，掺和不起。"}
-    ])},
-  // 5 玉简
-  {w:5, gen:()=> ev("溪底玉简",
-    "溪水退了一截，露出底下的青石。石缝里卡着一枚灰扑扑的玉简。",
-    [
-      {t:"撬开石缝取出来", f:()=>{
-        S.exp = Math.min(expNeed(), S.exp + gainPerDay()*RI(20,45));
-        S.insight = Math.min(30, S.insight+1);
-        return "玉简里是一段驳杂的修行心得，作者署名早已磨平。\n你读过一遍，修为小涨，悟性 +1。";
-      }},
-      {t:"不去动它", f:()=> "你看了会儿，终究没伸手。水底的东西未必是好东西。"}
-    ])},
-  // 6 受伤修士
-  {w:6, gen:()=> ev("路边的伤者",
-    "一个年轻修士靠树坐着，道袍上全是血，见你过来，手里捏紧了半张符。",
-    [
-      {t:"给他一枚回气丹", f:()=>{
-        if (!S.bag.huiqi) return "你翻了翻行囊，一粒回气丹也没有。他苦笑了一下。";
-        removeItem("huiqi",1);
-        if (Math.random() < 0.7){
-          const m = RI(50,120); S.money += m; S.rep += 2;
-          return "他吞下丹药，喘了半晌，从怀里掏出一袋灵石塞给你。\n「青石镇柳家，记你一份情。」\n得灵石 "+m+"，声望 +2。";
-        }
-        S.rep += 1;
-        return "他吞了丹药，勉强站起，抱拳一礼便走了。\n你不知道他叫什么，也没打算问。";
-      }},
-      {t:"问他值多少灵石", f:()=>{
-        S.rep -= 2;
-        const m = RI(20,60); S.money += m;
-        return "他盯着你看了很久，把身上最后一点灵石给了你。\n得灵石 "+m+"，声望 -2。\n走出很远，你还觉得背上发凉。";
-      }},
-      {t:"径直走开", f:()=> "你看了他一眼，继续走。这世道，救人也是个赌。"}
-    ])},
-  // 7 灵气潮汐
-  {w:5, gen:()=> ev("灵潮",
-    "夜半，山谷里忽然起雾。雾气带着甜意，吸入一口，浑身经脉都在发烫。",
-    [
-      {t:"就地打坐，吸纳灵潮", f:()=>{
-        const g = Math.round(gainPerDay()*RI(80,160));
-        S.exp = Math.min(expNeed(), S.exp + g);
-        return "你盘膝坐到天明，灵雾顺着毛孔往里钻。\n修为 +"+fmt(g)+"。";
-      }},
-      {t:"趁雾遮盖，往前多走一段", f:()=>{
-        const d = RI(2,5); advanceDays(d, true);
-        S.money += RI(10,40);
-        return "雾里什么都看不清，你走了 "+d+" 日，反倒摸到一处野矿。\n得灵石若干。";
-      }}
-    ])},
-  // 8 散修兜售
-  {w:7, gen:()=> ev("兜售丹药的散修",
-    "一个獐头鼠目的修士拦住你，掌心摊开三粒泛着幽光的丹药。\n「筑基丹，三百灵石，便宜你了。」",
-    [
-      {t:"买下（300 灵石）", f:()=>{
-        if (S.money < 300) return "你把储物袋翻了个底朝天，不够。他嗤笑一声收起丹药。";
-        S.money -= 300;
-        if (Math.random() < 0.45){
-          addItem("zhujidan",1);
-          return "丹药入手沉甸甸的，药香纯正。\n这趟不亏。得筑基丹 ×1。";
-        }
-        addItem("juqi",2);
-        return "你回去一验，只是两粒聚气丹搓大了些。\n人早跑没影了。";
-      }},
-      {t:"摇头走开", f:()=> "你没接话。他讨了个没趣，转身去拦下一个人。"}
-    ])},
-  // 9 灵果
-  {w:6, gen:()=> ev("古树灵果",
-    "崖边老树上挂着几枚朱红果子，树皮已被啃得斑驳——有东西在守着。",
-    [
-      {t:"爬上去摘", f:()=>{
-        if (Math.random() < 0.55){
-          const g = Math.round(gainPerDay()*RI(40,90));
-          S.exp = Math.min(expNeed(), S.exp+g);
-          return "你摘了三枚，酸涩难当，但入腹后暖意直升丹田。\n修为 +"+fmt(g)+"。";
-        }
-        const mob = makeMob(REGIONS[S.region].lv+1);
-        return "枝条一晃，一团黑影从树冠里扑下来。\n\n"+battle(mob).text;
-      }},
-      {t:"不冒这个险", f:()=> "你退了两步。守着的东西多半比果子值钱。"}
-    ])},
-  // 10 劫道
+
   {w:8, gen:()=>{
     const mob = makeMob(REGIONS[S.region].lv);
     mob.n = "劫道的散修";
@@ -809,7 +1167,7 @@ const EVENTS = [
       [
         {t:"硬拼", f:()=> battle(mob).text},
         {t:"交出灵石", f:()=>{
-          const lose = Math.min(S.money, RI(40,100));
+          const lose = Math.min(S.money, RI(60,150));
           S.money -= lose;
           return "你把灵石袋扔过去。他们掂了掂，让开了路。\n损失灵石 "+lose+"。";
         }},
@@ -824,42 +1182,150 @@ const EVENTS = [
         }}
       ]);
   }},
-  // 11 灵矿
-  {w:5, gen:()=> ev("露头的灵矿",
-    "山壁裂开一道缝，缝里嵌着星星点点的荧光。是灵石矿。",
+
+  {w:8, gen:()=> ev("破败洞府",
+    "藤蔓后头露出半截石门，门缝里透着陈年的阴气。\n门楣上刻着三个字，被苔藓盖住了一半。",
     [
-      {t:"用剑凿下来", f:()=>{
-        const m = RI(60,180); S.money += m;
-        const d = RI(4,10); advanceDays(d,true);
-        return "你凿了 "+d+" 日，指甲缝里全是血。\n得灵石 "+m+"。";
+      {t:"推开石门进去", f:()=>{
+        const r = Math.random();
+        if (r < 0.42){
+          const m = RI(150,400); S.money += m;
+          const q = rollQ(3);
+          const k = addItem("lingcao", RI(2,4), q);
+          return "洞内只有一具盘坐的枯骨，膝上搁着个储物袋。\n你取了袋子。枯骨无碑无名，你替他掩了土。\n灵石 +"+m+"，另得 "+itemName(k)+"。";
+        } else if (r < 0.7){
+          S.exp = Math.min(expNeed(), S.exp + gainPerDay()*RI(30,60));
+          return "石壁上刻着密密麻麻的字，是一篇残缺功法。\n你读了三日，虽不全懂，修为却涨了一截。";
+        } else {
+          const mob = makeMob(Math.min(7, (REGIONS[S.region].lv)+1));
+          return "洞中并非空无一人。\n\n"+battle(mob, {maxRounds:20}).text;
+        }
       }},
-      {t:"记下位置，先走", f:()=>{
-        S.flags.mine = (S.flags.mine||0)+1;
-        return "你记住了方位。若日后有闲暇，或许能再来。";
+      {t:"绕开，不惹是非", f:()=> "你记下这处地方，转身走了。有些门推开就关不上了。"}
+    ])},
+
+  {w:7, gen:()=> ev("林中斗法",
+    "前方林间剑光乱闪，两个修士正斗得难解难分，地上已躺着一个人。\n没人注意到你。",
+    [
+      {t:"趁乱摸走地上的东西", f:()=>{
+        if (Math.random() < 0.6){
+          const m = RI(200,500); S.money += m;
+          const q = rollQ(3);
+          const k = addItem("yaodan",1,q);
+          S.rep -= 1;
+          return "你贴着草根爬过去，从死人怀里摸出储物袋。\n灵石 +"+m+"，得 "+itemName(k)+"。\n身后剑光炸开，你没敢回头。";
+        }
+        const mob = makeMob(REGIONS[S.region].lv+1);
+        return "你刚弯腰，其中一人扭过头来。\n\n"+battle(mob).text;
+      }},
+      {t:"远远绕开", f:()=> "你压低身形，从坡后绕了过去。修士之间的事，掺和不起。"}
+    ])},
+
+  {w:7, gen:()=> ev("溪底玉简",
+    "溪水退了一截，露出底下的青石。石缝里卡着一枚灰扑扑的玉简。",
+    [
+      {t:"撬开石缝取出来", f:()=>{
+        S.exp = Math.min(expNeed(), S.exp + gainPerDay()*RI(20,45));
+        S.insight = Math.min(30, S.insight+1);
+        const m = RI(80,200); S.money += m;
+        return "玉简里是一段驳杂的修行心得，作者署名早已磨平。\n石缝深处还卡着一小袋灵石。\n修为小涨，悟性 +1，灵石 +"+m+"。";
+      }},
+      {t:"不去动它", f:()=> "你看了会儿，终究没伸手。水底的东西未必是好东西。"}
+    ])},
+
+  {w:7, gen:()=> ev("路边的伤者",
+    "一个年轻修士靠树坐着，道袍上全是血，见你过来，手里捏紧了半张符。",
+    [
+      {t:"给他一枚回气丹", f:()=>{
+        if (countOf("huiqi") <= 0) return "你翻了翻行囊，一粒回气丹也没有。他苦笑了一下。";
+        takeAny("huiqi",1);
+        if (Math.random() < 0.7){
+          const m = RI(250,600); S.money += m; S.rep += 2;
+          return "他吞下丹药，喘了半晌，从怀里掏出一袋灵石塞给你。\n「青石镇柳家，记你一份情。」\n灵石 +"+m+"，声望 +2。";
+        }
+        S.rep += 1;
+        return "他吞了丹药，勉强站起，抱拳一礼便走了。\n你不知道他叫什么，也没打算问。";
+      }},
+      {t:"问他值多少灵石", f:()=>{
+        S.rep -= 2;
+        const m = RI(120,300); S.money += m;
+        return "他盯着你看了很久，把身上最后一点灵石给了你。\n灵石 +"+m+"，声望 -2。\n走出很远，你还觉得背上发凉。";
+      }},
+      {t:"径直走开", f:()=> "你看了他一眼，继续走。这世道，救人也是个赌。"}
+    ])},
+
+  {w:6, gen:()=> ev("灵潮",
+    "夜半，山谷里忽然起雾。雾气带着甜意，吸入一口，浑身经脉都在发烫。",
+    [
+      {t:"就地打坐，吸纳灵潮", f:()=>{
+        const g = Math.round(gainPerDay()*RI(80,160));
+        S.exp = Math.min(expNeed(), S.exp+g);
+        return "你盘膝坐到天明，灵雾顺着毛孔往里钻。\n修为 +"+fmt(g)+"。";
+      }},
+      {t:"趁雾遮盖，往前多走一段", f:()=>{
+        const d = RI(2,5); advanceDays(d, true);
+        const m = RI(80,220); S.money += m;
+        const q = rollQ(3);
+        const k = addItem("lingshi_ore", RI(1,3), q);
+        return "雾里什么都看不清，你走了 "+d+" 日，反倒摸到一处野矿。\n灵石 +"+m+"，另得 "+itemName(k)+"。";
       }}
     ])},
-  // 12 村庄求助
-  {w:5, gen:()=> ev("荒村",
+
+  {w:7, gen:()=> ev("兜售丹药的散修",
+    "一个獐头鼠目的修士拦住你，掌心摊开三粒泛着幽光的丹药。\n「筑基丹，二百五十灵石，便宜你了。」",
+    [
+      {t:"买下（250 灵石）", f:()=>{
+        if (S.money < 250) return "你把储物袋翻了个底朝天，不够。他嗤笑一声收起丹药。";
+        S.money -= 250;
+        if (Math.random() < 0.5){
+          const k = addItem("zhujidan",1,0);
+          return "丹药入手沉甸甸的，药香纯正。\n这趟不亏。得 "+itemName(k)+"。";
+        }
+        const k = addItem("juqi",2,1);
+        return "你回去一验，只是两粒聚气丹搓大了些。\n人早跑没影了。得 "+itemName(k)+"。";
+      }},
+      {t:"摇头走开", f:()=> "你没接话。他讨了个没趣，转身去拦下一个人。"}
+    ])},
+
+  {w:7, gen:()=> ev("古树灵果",
+    "崖边老树上挂着几枚朱红果子，树皮已被啃得斑驳——有东西在守着。",
+    [
+      {t:"爬上去摘", f:()=>{
+        if (Math.random() < 0.55){
+          const g = Math.round(gainPerDay()*RI(40,90));
+          S.exp = Math.min(expNeed(), S.exp+g);
+          const q = rollQ(3);
+          const k = addItem("lingcao", RI(2,4), q);
+          return "你摘了三枚，酸涩难当，但入腹后暖意直升丹田。\n修为 +"+fmt(g)+"，另得 "+itemName(k)+"。";
+        }
+        const mob = makeMob(REGIONS[S.region].lv+1);
+        return "枝条一晃，一团黑影从树冠里扑下来。\n\n"+battle(mob).text;
+      }},
+      {t:"不冒这个险", f:()=> "你退了两步。守着的东西多半比果子值钱。"}
+    ])},
+
+  {w:6, gen:()=> ev("荒村",
     "村口没人，屋子都空着。一个老妇从门后探出头，说夜里山里的东西又来了。",
     [
       {t:"留下守一夜", f:()=>{
         const mob = makeMob(Math.max(1, REGIONS[S.region].lv-1));
         const r = battle(mob, {maxRounds:20});
         if (r.win){
-          S.rep += 3; S.money += RI(30,80);
-          return "入夜，它果然来了。\n\n"+r.text+"\n\n天亮时，村里人把钱袋塞进你手里。声望 +3。";
+          S.rep += 3;
+          const m = RI(200,460); S.money += m;
+          return "入夜，它果然来了。\n\n"+r.text+"\n\n天亮时，村里人把钱袋塞进你手里。\n灵石 +"+m+"，声望 +3。";
         }
         return "入夜，它果然来了。\n\n"+r.text;
       }},
       {t:"给她几块灵石就走", f:()=>{
-        if (S.money < 20) return "你掏了掏，只有零星几块。老妇还是道了谢。";
-        S.money -= 20; S.rep += 1;
+        if (S.money < 30) return "你掏了掏，只有零星几块。老妇还是道了谢。";
+        S.money -= 30; S.rep += 1;
         return "老妇捧着灵石，手抖得厉害。\n声望 +1。";
       }},
       {t:"绕开村子", f:()=> "你从村外的小路走了。村里的狗一直叫到很远。"}
     ])},
-  // 13 顿悟
-  {w:4, gen:()=> ev("顿悟",
+
+  {w:5, gen:()=> ev("顿悟",
     "你在一块石头上坐了很久。风从耳边过，忽然间，许多想不通的事一起通了。",
     [
       {t:"静坐体悟", f:()=>{
@@ -869,8 +1335,8 @@ const EVENTS = [
         return "你坐到日落。修为 +"+fmt(g)+"。";
       }}
     ])},
-  // 14 魔修
-  {w:5, gen:()=>{
+
+  {w:6, gen:()=>{
     const mob = makeMob(Math.min(7, REGIONS[S.region].lv+1));
     mob.n = "黑袍魔修";
     return ev("黑袍魔修",
@@ -887,8 +1353,8 @@ const EVENTS = [
         }}
       ]);
   }},
-  // 15 陷阱
-  {w:5, gen:()=> ev("捕兽陷阱",
+
+  {w:6, gen:()=> ev("捕兽陷阱",
     "脚下枯叶一软——是陷阱。你及时稳住身形，坑底插着削尖的木桩。",
     [
       {t:"小心爬出去", f:()=>{
@@ -898,25 +1364,29 @@ const EVENTS = [
         S.hurt = RI(3,8);
         return "土壁塌了一块。你摔了下去，小腿被木刺划开一道口子。\n需静养数日。";
       }},
-      {t:"在坑底找找有没有猎物", f:()=>{
-        if (Math.random()<0.5){
-          addItem("shoupi", RI(1,3));
-          return "坑底躺着一只还没烂透的山鹿。\n得妖兽皮毛 ×若干。";
+      {t:"在坑底翻翻，陷阱总得有猎物", f:()=>{
+        if (Math.random()<0.6){
+          const q = rollQ(2);
+          const k = addItem("shoupi", RI(2,4), q);
+          const m = RI(60,160); S.money += m;
+          return "坑底躺着只还没烂透的山鹿，皮毛完好。\n你剥了皮，顺手摸了它窝里的东西。\n得 "+itemName(k)+" ×"+S.bag[k]+"，灵石 +"+m+"。";
         }
         return "坑底只有骨头。你爬出去时天已经黑了。";
       }}
     ])},
-  // 16 秘境入口
-  {w:3, gen:()=> ev("秘境入口",
+
+  {w:5, gen:()=> ev("秘境入口",
     "山壁上裂开一道幽深的缝，里面透出不属于这世间的光。\n旁边石上刻着：「入者，慎之。」",
     [
       {t:"进去看看", f:()=>{
         const roll = Math.random();
-        if (roll < 0.35){
+        if (roll < 0.38){
           const g = Math.round(gainPerDay()*RI(120,240));
           S.exp = Math.min(expNeed(), S.exp+g);
-          S.money += RI(100,300);
-          return "里面是一间石室，灵气浓得几乎凝成水。\n你坐了不知多久。\n修为 +"+fmt(g)+"，另得灵石若干。";
+          const m = RI(400,900); S.money += m;
+          const q = Math.min(4, rollQ(4)+1);
+          const k = addItem("lingyu", 1, q);
+          return "里面是一间石室，灵气浓得几乎凝成水。\n你坐了不知多久。\n修为 +"+fmt(g)+"，灵石 +"+m+"，另得 "+itemName(k)+"。";
         }
         if (roll < 0.72){
           const mob = makeMob(Math.min(7, REGIONS[S.region].lv+2));
@@ -934,34 +1404,37 @@ const EVENTS = [
         return "你在洞口打坐半日，灵气确实比外头浓。\n修为 +"+fmt(g)+"。";
       }}
     ])},
-  // 17 女修求助
-  {w:4, gen:()=> ev("树下的人",
+
+  {w:5, gen:()=> ev("树下的人",
     "一个女修倒在树下，衣衫沾了泥，怀里死死抱着个包裹。\n她看见你，先是恐惧，然后咬了咬嘴唇。",
     [
       {t:"背她走一段", f:()=>{
         const d = RI(3,8); advanceDays(d,true);
         if (Math.random()<0.65){
-          const m = RI(60,150); S.money += m; S.rep += 2;
-          return "走了 "+d+" 日，她伤好些了，把包裹分了一半给你。\n得灵石 "+m+"，声望 +2。\n她没说自己是谁。";
+          const m = RI(250,600); S.money += m; S.rep += 2;
+          return "走了 "+d+" 日，她伤好些了，把包裹分了一半给你。\n灵石 +"+m+"，声望 +2。\n她没说自己是谁。";
         }
         return "走了 "+d+" 日，她还是没撑住。\n你把包裹还给了她家里人——如果你找得到的话。";
       }},
       {t:"先看看包裹里是什么", f:()=>{
         S.rep -= 3;
-        S.money += 80;
-        return "包裹里是几瓶丹药和一袋灵石。\n她把脸埋进臂弯里，一句话没说。\n声望 -3。";
+        const m = RI(300,700); S.money += m;
+        return "包裹里是几瓶丹药和一袋灵石。\n她把脸埋进臂弯里，一句话没说。\n灵石 +"+m+"，声望 -3。";
       }},
       {t:"当她不存在", f:()=> "你从她身边走过去。这条路上死人见得多了。"}
     ])},
-  // 18 枯井
+
   {w:5, gen:()=> ev("枯井底",
     "井口塌了一半。往下看，井底有一堆白骨，和一个布袋。",
     [
       {t:"下去看看", f:()=>{
         if (Math.random()<0.6){
-          const m = RI(50,140); S.money += m;
-          if (Math.random()<0.4) addItem("huiqi", RI(1,2));
-          return "布袋子已经烂了，里面的灵石倒还完好。\n得灵石 "+m+"，另有些丹药。";
+          const m = RI(180,420); S.money += m;
+          if (Math.random()<0.5){
+            const k = addItem("huiqi", RI(1,2), rollQ(3));
+            return "布袋子已经烂了，里面的灵石倒还完好。\n灵石 +"+m+"，另得 "+itemName(k)+"。";
+          }
+          return "布袋子已经烂了，里面的灵石倒还完好。\n灵石 +"+m+"。";
         }
         const st = stats();
         S.hp = Math.max(1, Math.round(st.hpMax*0.5));
@@ -970,27 +1443,7 @@ const EVENTS = [
       }},
       {t:"丢块石头试探", f:()=> "石头落下去，井底有东西动了一下。\n你决定不下去。"}
     ])},
-  // 19 拍卖
-  {w:4, gen:()=> ev("坊市拍卖",
-    "坊市角落里临时开了个小拍卖，台上摆着几样东西，底下人声鼎沸。",
-    [
-      {t:"举牌争那件古物", f:()=>{
-        const cost = RI(200,500);
-        if (S.money < cost) return "你举了一次牌就被人压下去，只好讪讪坐下。";
-        S.money -= cost;
-        if (Math.random()<0.5){
-          addItem("pozhang", 1);
-          return "你以 "+cost+" 灵石拿下那只木匣，里面是一粒破障丹。\n值。";
-        }
-        addItem("lingcao", RI(2,3));
-        return "木匣打开，是几株上了年份的灵草。\n算不上亏，也绝算不上值。";
-      }},
-      {t:"坐在后排看热闹", f:()=>{
-        S.insight = Math.min(30, S.insight+1);
-        return "你听了半场，倒是听出些门道：谁的货真，谁的货假。\n悟性 +1。";
-      }}
-    ])},
-  // 20 同修切磋
+
   {w:5, gen:()=> ev("山道遇同修",
     "一个和你差不多年纪的修士拦下你，拱手道：「道友，可愿切磋一二？」",
     [
@@ -1000,13 +1453,14 @@ const EVENTS = [
         const r = battle(mob, {maxRounds:18});
         if (r.win){
           S.rep += 1;
-          return r.text+"\n\n他抱拳大笑：「受教了。」声望 +1。";
+          const m = RI(80,200); S.money += m;
+          return r.text+"\n\n他抱拳大笑：「受教了。」\n还非要请你喝了顿酒，塞了些灵石。声望 +1，灵石 +"+m+"。";
         }
         return r.text;
       }},
       {t:"推辞", f:()=> "你摆摆手。他也不恼，笑着走了。"}
     ])},
-  // 21 雨夜
+
   {w:5, gen:()=> ev("山雨",
     "雨说来就来，砸得人睁不开眼。你不得不在崖下寻个遮蔽。",
     [
@@ -1022,12 +1476,14 @@ const EVENTS = [
           S.hurt = RI(2,5);
           return "你淋了 "+d+" 日，寒气入体，回去后病了一场。";
         }
-        const m = RI(20,60); S.money += m;
-        return "雨中你反倒撞见一株被冲出来的野参。\n得灵石 "+m+"。";
+        const m = RI(60,160); S.money += m;
+        const q = rollQ(2);
+        const k = addItem("lingcao", RI(1,3), q);
+        return "雨中你反倒撞见一丛被水冲出来的野药。\n得 "+itemName(k)+"，卖了 "+m+" 灵石。";
       }}
     ])},
-  // 22 陌生老者
-  {w:3, gen:()=> ev("道旁老者",
+
+  {w:4, gen:()=> ev("道旁老者",
     "一个衣衫褴褛的老者在道旁晒太阳，见你走来，忽然开口：\n「小子，你身上这功法，练岔了。」",
     [
       {t:"请教他", f:()=>{
@@ -1190,11 +1646,16 @@ function doExplore(idx){
   advanceDays(days, true);
   if (S.dead) return;
 
-  // 30% 空手，70% 事件
-  if (Math.random() < 0.28){
-    const m = RI(8, 8 + r.lv*18);
+  // 四分之一概率平淡收场，但总不至于空手
+  if (Math.random() < 0.25){
+    const m = RI(30, 30 + r.lv*55);
     S.money += m;
-    pushLog("你在"+r.n+"走了 "+days+" 日，没遇上什么，只捡了点零碎。灵石 +"+m+"。");
+    let extra = "";
+    if (Math.random() < 0.65){
+      const k = addItem(pick(["lingcao","shoupi","fuzhi","xueteng","yaogu"]), RI(1,3), rollQ(r.lv));
+      extra = "另捡到 "+itemName(k)+"。";
+    }
+    pushLog("你在"+r.n+"走了 "+days+" 日，没遇上什么事。\n沿途捡了些能换钱的东西，灵石 +"+m+"。"+extra);
     renderHeader();
     return;
   }
@@ -1273,97 +1734,163 @@ function renderChar(){
   </div>`;
 }
 
-function renderBag(){
-  const keys = Object.keys(S.bag).filter(k=>S.bag[k]>0);
-  const eqs = Object.keys(ITEMS).filter(k=>ITEMS[k].t==="eq");
-  let html = `<div class="card"><h3>随身之物</h3>`;
-  if (!keys.length) html += `<div class="empty">空空如也</div>`;
-  else {
-    keys.forEach(k=>{
-      const it = ITEMS[k];
-      const usable = it.use && k !== "zhujidan" && k!=="jiedandan" && k!=="yuanyingdan" && k!=="huashendan";
-      html += `<div class="row">
-        <div><div class="nm">${it.n} <span class="tag">×${S.bag[k]}</span></div><div class="ds">${it.d||""}</div></div>
-        <div class="rt">${usable?`<button class="btn sm" onclick="useItem('${k}')">服用</button>`:
-          (it.t==="mat"?`<button class="btn sm" onclick="sellItem('${k}',1)">售 1</button>`:``)}</div>
-      </div>`;
-    });
-  }
-  html += `</div>`;
+function qtag(k){
+  const q = QQ(k);
+  if (q <= 0) return "";
+  const c = RARITY[q].c;
+  return '<span class="tag" style="color:'+c+';border-color:'+c+'55;background:'+c+'12">'+RARITY[q].n+'</span>';
+}
 
-  html += `<div class="card"><h3>法器</h3>`;
-  const owned = eqs.filter(k=>S.bag[k]>0);
-  if (!owned.length) html += `<p class="hint">没有法器。空手对敌，全凭肉身。</p>`;
-  else owned.forEach(k=>{
-    const it = ITEMS[k];
-    const on = S.equip[it.slot] === k;
-    html += `<div class="row">
-      <div><div class="nm">${it.n} ${on?'<span class="tag on">已佩</span>':''}</div>
-      <div class="ds">${it.d} ${it.atk?('· 攻 +'+it.atk):('· 护 +'+it.def)}</div></div>
-      <div class="rt"><button class="btn sm" onclick="equipItem('${k}')">${on?'卸下':'佩上'}</button></div>
-    </div>`;
+function renderBag(){
+  const keys = Object.keys(S.bag).filter(k=>S.bag[k]>0 && itemBase(k));
+  const mats  = keys.filter(k=>itemBase(k).t==="mat").sort((a,b)=>QQ(b)-QQ(a));
+  const pills = keys.filter(k=>itemBase(k).t==="pill").sort((a,b)=>QQ(b)-QQ(a));
+  const eqs   = keys.filter(k=>itemBase(k).t==="eq").sort((a,b)=>QQ(b)-QQ(a));
+
+  let html = '';
+
+  html += '<div class="card"><h3>材料</h3>';
+  if (!mats.length) html += '<div class="empty">没有材料</div>';
+  else mats.forEach(k=>{
+    const it = itemBase(k);
+    html += '<div class="row">'
+      + '<div><div class="nm">'+it.n+' '+qtag(k)+' <span class="tag">×'+S.bag[k]+'</span></div>'
+      + '<div class="ds">'+it.d+' · 单价 '+sellPrice(k)+'</div></div>'
+      + '<div class="rt"><button class="btn sm" onclick="sellItem(\''+k+'\',1)">卖1</button>'
+      + '<button class="btn sm" onclick="sellItem(\''+k+'\',999)">全卖</button></div>'
+      + '</div>';
   });
-  html += `</div>`;
+  html += '</div>';
+
+  html += '<div class="card"><h3>丹药</h3>';
+  if (!pills.length) html += '<div class="empty">没有丹药</div>';
+  else pills.forEach(k=>{
+    const it = itemBase(k);
+    const usable = it.use && QQ(k) >= 0;
+    html += '<div class="row">'
+      + '<div><div class="nm">'+it.n+' '+qtag(k)+' <span class="tag">×'+S.bag[k]+'</span></div>'
+      + '<div class="ds">'+it.d+'</div></div>'
+      + '<div class="rt">'+(usable?'<button class="btn sm" onclick="useItem(\''+k+'\')">服用</button>':'')
+      + '<button class="btn sm" onclick="sellItem(\''+k+'\',1)">卖1</button></div>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  html += '<div class="card"><h3>法器</h3>';
+  if (!eqs.length) html += '<p class="hint">没有法器。空手对敌，全凭肉身。</p>';
+  else eqs.forEach(k=>{
+    const it = itemBase(k);
+    const on = S.equip[it.slot] === k;
+    const val = it.atk ? ('攻 +'+eqAtk(k)) : ('护 +'+eqDef(k));
+    html += '<div class="row">'
+      + '<div><div class="nm">'+it.n+' '+qtag(k)+' '+(on?'<span class="tag on">已佩</span>':'')+'</div>'
+      + '<div class="ds">'+it.d+' · '+val+'</div></div>'
+      + '<div class="rt"><button class="btn sm" onclick="equipItem(\''+k+'\')">'+(on?'卸下':'佩上')+'</button>'
+      + '<button class="btn sm" onclick="sellItem(\''+k+'\',1)">卖</button></div>'
+      + '</div>';
+  });
+  html += '</div>';
+
   $("tab-bag").innerHTML = html;
 }
 
+const QUEST_POOL = [
+  ["lingcao", 5], ["yaodan", 3], ["shoupi", 6], ["xueteng", 4],
+  ["yaogu", 4], ["fuzhi", 5], ["lingshi_ore", 3], ["lingyu", 1]
+];
+
+function ensureQuests(){
+  if (!Array.isArray(S.quests)) S.quests = [];
+  S.quests = S.quests.filter(q=>q && !q.done && ITEMS[q.item]);
+  while (S.quests.length < 3){
+    const p = pick(QUEST_POOL);
+    if (S.quests.some(q=>q.item===p[0])) {
+      if (S.quests.length >= QUEST_POOL.length) break;
+      continue;
+    }
+    const n = Math.max(1, Math.round(p[1] * (1 + S.realm*0.6)));
+    S.quests.push({ item:p[0], n:n, bonus:1.9 + S.realm*0.15, done:false });
+  }
+}
+
 function renderShop(){
-  const list = ["huiqi","juqi","pozhang","huiling","lingcao","yaodan","tie_jian","qingfeng","hanyang","buyi","hufu","jiajia","yufeng","qingyuan"];
-  const sellables = Object.keys(S.bag).filter(k=>S.bag[k]>0 && ITEMS[k].t==="mat");
-  let html = `<div class="card"><h3>坊市 · 售</h3>`;
+  ensureQuests();
+  let html = '';
+
+  // ---- 收购委托 ----
+  html += '<div class="card"><h3>收购委托 <span style="font-weight:400;font-size:11.5px;color:var(--ink3)">品相越好，给价越高</span></h3>';
+  S.quests.forEach((q,i)=>{
+    const have = countOf(q.item);
+    const ok = have >= q.n;
+    html += '<div class="row">'
+      + '<div><div class="nm">'+ITEMS[q.item].n+' ×'+q.n+'</div>'
+      + '<div class="ds">你有 '+have+' 个 · 报酬为行价 '+(q.bonus).toFixed(1)+' 倍</div></div>'
+      + '<div class="rt"><button class="btn sm '+(ok?'':'off')+'" onclick="deliverQuest('+i+')">交付</button></div>'
+      + '</div>';
+  });
+  html += '<div style="display:flex;gap:8px;margin-top:8px">'
+    + '<button class="btn sm" style="flex:1" onclick="rerollQuests()">换一批</button></div>';
+  html += '</div>';
+
+  // ---- 丹药 ----
+  html += '<div class="card"><h3>丹药</h3>';
   ["huiqi","juqi","pozhang","huiling","zhujidan","jiedandan"].forEach(k=>{
     const it = ITEMS[k];
     const afford = S.money >= it.price;
-    html += `<div class="row">
-      <div><div class="nm">${it.n}</div><div class="ds">${it.d}</div></div>
-      <div class="rt"><span class="price">${it.price}</span>
-      <button class="btn sm ${afford?'':'off'}" onclick="buyItem('${k}')">买</button></div>
-    </div>`;
+    html += '<div class="row">'
+      + '<div><div class="nm">'+it.n+'</div><div class="ds">'+it.d+'</div></div>'
+      + '<div class="rt"><span class="price">'+it.price+'</span>'
+      + '<button class="btn sm '+(afford?'':'off')+'" onclick="buyItem(\''+k+'\')">买</button></div>'
+      + '</div>';
   });
-  html += `</div>`;
+  html += '</div>';
 
-  html += `<div class="card"><h3>法器 · 功诀</h3>`;
+  // ---- 法器 · 功诀 ----
+  html += '<div class="card"><h3>法器 · 功诀</h3>';
   ["tie_jian","qingfeng","hanmang","buyi","hufu","jiajia"].forEach(k=>{
     const it = ITEMS[k];
     const afford = S.money >= it.price;
-    const owned = S.bag[k]>0;
-    html += `<div class="row">
-      <div><div class="nm">${it.n} ${owned?'<span class="tag eq">已有</span>':''}</div>
-      <div class="ds">${it.atk?('攻 +'+it.atk):('护 +'+it.def)}</div></div>
-      <div class="rt"><span class="price">${it.price}</span>
-      <button class="btn sm ${afford&&!owned?'':'off'}" onclick="buyItem('${k}')">买</button></div>
-    </div>`;
+    const owned = countOf(k) > 0;
+    html += '<div class="row">'
+      + '<div><div class="nm">'+it.n+' '+(owned?'<span class="tag eq">已有</span>':'')+'</div>'
+      + '<div class="ds">'+(it.atk?('攻 +'+it.atk):('护 +'+it.def))+'</div></div>'
+      + '<div class="rt"><span class="price">'+it.price+'</span>'
+      + '<button class="btn sm '+(afford&&!owned?'':'off')+'" onclick="buyItem(\''+k+'\')">买</button></div>'
+      + '</div>';
   });
   Object.keys(GONGFA).filter(k=>k!=="changchun").forEach(k=>{
     const g = GONGFA[k];
     const afford = S.money >= g.price;
     const owned = S.known.includes(k);
-    html += `<div class="row">
-      <div><div class="nm">${g.n} ${owned?'<span class="tag eq">已习</span>':''}</div><div class="ds">${g.d} · 修速 ×${g.mul}</div></div>
-      <div class="rt"><span class="price">${g.price}</span>
-      <button class="btn sm ${afford&&!owned?'':'off'}" onclick="buyGongfa('${k}')">买</button></div>
-    </div>`;
+    html += '<div class="row">'
+      + '<div><div class="nm">'+g.n+' '+(owned?'<span class="tag eq">已习</span>':'')+'</div>'
+      + '<div class="ds">'+g.d+' · 修速 ×'+g.mul+'</div></div>'
+      + '<div class="rt"><span class="price">'+g.price+'</span>'
+      + '<button class="btn sm '+(afford&&!owned?'':'off')+'" onclick="buyGongfa(\''+k+'\')">买</button></div>'
+      + '</div>';
   });
-  html += `</div>`;
+  html += '</div>';
 
-  html += `<div class="card"><h3>收购</h3>`;
-  if (!sellables.length) html += `<p class="hint">没有可卖的材料。</p>`;
+  // ---- 出货 ----
+  const sellables = Object.keys(S.bag).filter(k=>S.bag[k]>0 && itemBase(k) && itemBase(k).t==="mat").sort((a,b)=>QQ(b)-QQ(a));
+  html += '<div class="card"><h3>出货</h3>';
+  if (!sellables.length) html += '<p class="hint">没有可卖的材料。</p>';
   else sellables.forEach(k=>{
-    html += `<div class="row">
-      <div><div class="nm">${ITEMS[k].n} <span class="tag">×${S.bag[k]}</span></div></div>
-      <div class="rt"><span class="price">${ITEMS[k].price}</span>
-      <button class="btn sm" onclick="sellItem('${k}',1)">卖 1</button>
-      <button class="btn sm" onclick="sellItem('${k}',999)">全卖</button></div>
-    </div>`;
+    html += '<div class="row">'
+      + '<div><div class="nm">'+itemBase(k).n+' '+qtag(k)+' <span class="tag">×'+S.bag[k]+'</span></div></div>'
+      + '<div class="rt"><span class="price">'+sellPrice(k)+'</span>'
+      + '<button class="btn sm" onclick="sellItem(\''+k+'\',1)">卖1</button>'
+      + '<button class="btn sm" onclick="sellItem(\''+k+'\',999)">全卖</button></div>'
+      + '</div>';
   });
-  html += `</div>`;
+  html += '</div>';
   $("tab-shop").innerHTML = html;
 }
 
 function renderBook(){
   const logs = S.log.slice().reverse();
   let html = `<div class="card"><h3>存档</h3>
-    <p class="hint">存档保存在本机浏览器，换设备或清缓存即丢失。建议偶尔导出一次。</p>
+    <p class="hint">存档保存在本机浏览器，换设备或清缓存即丢失。建议偶尔导出一次。<br>版本 v2 · 品质与经济修订</p>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="btn sm" style="flex:1" onclick="exportSave()">导出</button>
       <button class="btn sm" style="flex:1" onclick="importSave()">导入</button>
@@ -1382,9 +1909,9 @@ function escapeHtml(s){
 
 /* -------------------- 交互函数（全局） -------------------- */
 window.useItem = function(k){
-  const it = ITEMS[k];
-  if (!it.use || !S.bag[k]) return;
-  const msg = it.use(S);
+  const it = itemBase(k);
+  if (!it || !it.use || !S.bag[k]) return;
+  const msg = it.use(S, QQ(k));
   removeItem(k,1);
   pushLog(msg, "good");
   save(); renderHeader(); renderBag();
@@ -1393,21 +1920,49 @@ window.useItem = function(k){
 window.sellItem = function(k, n){
   if (!S.bag[k]) return;
   const cnt = Math.min(S.bag[k], n);
-  const gain = ITEMS[k].price * cnt;
+  const gain = sellPrice(k) * cnt;
+  const nm = itemName(k);
   removeItem(k, cnt);
   S.money += gain;
-  pushLog("卖出 "+ITEMS[k].n+" ×"+cnt+"，得灵石 "+gain+"。", "sys");
+  pushLog("卖出 "+nm+" ×"+cnt+"，得灵石 "+gain+"。", "sys");
   save(); renderHeader();
   if (currentTab==="shop") renderShop(); else renderBag();
 };
 
 window.buyItem = function(k){
   const it = ITEMS[k];
-  if (S.money < it.price) return;
+  if (!it || S.money < it.price) return;
   S.money -= it.price;
-  addItem(k,1);
+  addItem(k, 1, 0);
   pushLog("买下 "+it.n+"，花去灵石 "+it.price+"。", "sys");
   save(); renderHeader(); renderShop();
+};
+
+window.deliverQuest = function(i){
+  const q = S.quests && S.quests[i];
+  if (!q || q.done) return;
+  if (countOf(q.item) < q.n) return;
+  let total = 0, left = q.n;
+  const keys = Object.keys(S.bag).filter(k=>QID(k)===q.item).sort((a,b)=>QQ(a)-QQ(b));
+  for (const k of keys){
+    if (left <= 0) break;
+    const take = Math.min(S.bag[k], left);
+    total += sellPrice(k) * take;
+    removeItem(k, take);
+    left -= take;
+  }
+  const pay = Math.round(total * q.bonus);
+  S.money += pay;
+  q.done = true;
+  pushLog("交付 "+ITEMS[q.item].n+" ×"+q.n+"，得灵石 "+pay+"。", "good");
+  ensureQuests();
+  save(); renderHeader(); renderShop();
+};
+
+window.rerollQuests = function(){
+  S.quests = [];
+  ensureQuests();
+  save(); renderShop();
 };
 
 window.buyGongfa = function(k){
