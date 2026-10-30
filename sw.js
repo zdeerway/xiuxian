@@ -1,4 +1,4 @@
-const CACHE = "fanchen-v2-1";
+const CACHE = "fanchen-v2-3";
 const ASSETS = [
   "./",
   "./index.html",
